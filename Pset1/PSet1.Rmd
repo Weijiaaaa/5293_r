@@ -40,14 +40,26 @@ df %>%
   na.omit() %>%
   #ggplot(aes( x = Exercise, y = Award, fill = Year)) +
   ggplot(aes( x = Award, y = Exercise, fill = Year)) +
-  geom_col() +
+  #geom_col() +
+  geom_bar(position="dodge", stat="identity") +
   #coord_flip() +
-  labs( title = "SAT score change along with Years" )
+  labs( title = "Group bar chart of average `Exercise` by `Award`" )
 
 ```
 
 
 c)  Draw a percentage stacked barchart (each bar = 100%) of average `Exercise` by `Award` filled with `Year`. Compare to the plot in b), which one do you prefer and why?
+```{r}
+df %>%
+  na.omit() %>%
+  #ggplot(aes( x = Exercise, y = Award, fill = Year)) +
+  ggplot(aes( x = Award, y = Exercise, fill = Year)) +
+  #geom_col() +
+  geom_bar(position="fill", stat="identity") +
+  #coord_flip() +
+  labs( title = "Percentage stacked bar chart of average `Exercise` by `Award`" )
+
+```
 
 
 ### 2. Bad Drivers
