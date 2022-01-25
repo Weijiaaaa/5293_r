@@ -31,10 +31,18 @@ df %>%
   labs( title = "SAT score change along with Years" )
   
 ```
+It can be observed that in terms of median grade, junior students are doing better than all other grades, and first year students are doing the worst. Also, junior students SAT scores is the only set without an outlier, as sophomore students are having the most outliers and first year students having only one outlier, which implies that for sophomore students, there are students doing extremely good and extremely bad, and for first year students there is no one doing very bad, only one student doing extremely well.
 
 
 b)  Draw a grouped bar chart of average `Exercise` by `Award` filled with `Year`. (You can ignore NAs.)
 ```{r}
+df %>%
+  na.omit() %>%
+  #ggplot(aes( x = Exercise, y = Award, fill = Year)) +
+  ggplot(aes( x = Award, y = Exercise, fill = Year)) +
+  geom_col() +
+  #coord_flip() +
+  labs( title = "SAT score change along with Years" )
 
 ```
 
