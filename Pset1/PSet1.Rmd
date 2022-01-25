@@ -21,9 +21,9 @@ a)  Draw multiple horizontal boxplots of `SAT`, by `Year`. What do you observe? 
 library(Lock5withR)
 library(tibble)
 library(tidyverse)
-df<- tibble(StudentSurvey)
+df1<- tibble(StudentSurvey)
 
-df %>%
+df1 %>%
   na.omit() %>%
   ggplot(aes( x = SAT, y = Year)) +
   geom_boxplot() +
@@ -36,7 +36,7 @@ It can be observed that in terms of median grade, junior students are doing bett
 
 b)  Draw a grouped bar chart of average `Exercise` by `Award` filled with `Year`. (You can ignore NAs.)
 ```{r}
-df %>%
+df1 %>%
   na.omit() %>%
   #ggplot(aes( x = Exercise, y = Award, fill = Year)) +
   ggplot(aes( x = Award, y = Exercise, fill = Year)) +
@@ -50,7 +50,7 @@ df %>%
 
 c)  Draw a percentage stacked barchart (each bar = 100%) of average `Exercise` by `Award` filled with `Year`. Compare to the plot in b), which one do you prefer and why?
 ```{r}
-df %>%
+df1 %>%
   na.omit() %>%
   #ggplot(aes( x = Exercise, y = Award, fill = Year)) +
   ggplot(aes( x = Award, y = Exercise, fill = Year)) +
@@ -60,6 +60,7 @@ df %>%
   labs( title = "Percentage stacked bar chart of average `Exercise` by `Award`" )
 
 ```
+I prefer the percentage plot, because it can show how much difference there is in terms of the amount of exercise people do in different grades for different awards.
 
 
 ### 2. Bad Drivers
@@ -69,8 +70,25 @@ df %>%
 Data: *bad_drivers* in **fivethirtyeight ** package
 
 a)  Draw two histograms--one with base R and the other with **ggplot2**--of the variable representing the Percentage of drivers involved in fatal collisions who were alcohol-impaired without setting any parameters. What is the default method each uses to determine the number of bins? (For base R, show the calculation.) Which do you think is a better choice for this dataset and why?
+```{r}
+#install.packages("fivethirtyeight")
+library(fivethirtyeight)
+df2<- tibble(bad_drivers)
+
+df2 %>%
+  ggplot( aes(x = perc_alcohol)) +
+  geom_histogram()
+
+```
+
+
 
 b) Draw two histograms of the `perc_alcohol` variable with boundaries at multiples of 5, one right closed and one right open. Every boundary should be labeled (15, 20, 25, etc.)
+```{r}
+
+
+```
+
 
 
 c)  Adjust parameters--the same for both--so that the right open and right closed versions become identical. Explain your strategy. 
