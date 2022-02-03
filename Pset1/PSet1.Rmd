@@ -1,6 +1,8 @@
 ---
 title: "Problem Set 1 Spring 2022"
-output: pdf_document
+output:
+  html_document:
+    df_print: paged
 ---
 
 
@@ -11,11 +13,11 @@ Read *Graphical Data Analysis with R*, Ch. 3
 ### 1. SATs
 
 [7 points]
-
+a
 Data: *StudentSurvey* in **Lock5withR** package
 (Remember to add a proper title and labels to every plot.)
 
-a)  Draw multiple horizontal boxplots of `SAT`, by `Year`. What do you observe? (Hint:You can remove all blank and NAs)
+#a)  Draw multiple horizontal boxplots of `SAT`, by `Year`. What do you observe? (Hint:You can remove all blank and NAs)
 ```{r}
 #install.packages("Lock5withR")
 library(Lock5withR)
@@ -23,43 +25,43 @@ library(tibble)
 library(tidyverse)
 df1<- tibble(StudentSurvey)
 
+typeof(df1$Year)
+unique(df1$Year)
+
 df1 %>%
-  na.omit() %>%
+  mutate( Year = fct_relevel( df1$Year, "FirstYear", "Sophomore", "junior")) %>%
+    na.omit() %>%
   ggplot(aes( x = SAT, y = Year)) +
   geom_boxplot() +
-  #coord_flip() +
   labs( title = "SAT score change along with Years" )
   
 ```
-It can be observed that in terms of median grade, junior students are doing better than all other grades, and first year students are doing the worst. Also, junior students SAT scores is the only set without an outlier, as sophomore students are having the most outliers and first year students having only one outlier, which implies that for sophomore students, there are students doing extremely good and extremely bad, and for first year students there is no one doing very bad, only one student doing extremely well.
+
+It can be observed that in terms of median grade, junior students are doing better than all other grades, and first year students are doing the worst. Also, sophomore students SAT scores have outliers in two sides of the box, which means that there are sophomore students doing very good or very bad in the SAT tests. On contrary, there is no outliers for Junior students, meaning that junior students are doing well overall without anyone doing super well or getting left behind.
 
 
-b)  Draw a grouped bar chart of average `Exercise` by `Award` filled with `Year`. (You can ignore NAs.)
+#b)  Draw a grouped bar chart of average `Exercise` by `Award` filled with `Year`. (You can ignore NAs.)
 ```{r}
 df1 %>%
   na.omit() %>%
-  #ggplot(aes( x = Exercise, y = Award, fill = Year)) +
   ggplot(aes( x = Award, y = Exercise, fill = Year)) +
-  #geom_col() +
-  geom_bar(position="dodge", stat="identity") +
-  #coord_flip() +
+  geom_bar(position = "dodge", stat = "summary", fun.y = "mean")+
   labs( title = "Group bar chart of average `Exercise` by `Award`" )
 
 ```
 
 
-c)  Draw a percentage stacked barchart (each bar = 100%) of average `Exercise` by `Award` filled with `Year`. Compare to the plot in b), which one do you prefer and why?
+#c)  Draw a percentage stacked barchart (each bar = 100%) of average `Exercise` by `Award` filled with `Year`. Compare to the plot in b), which one do you prefer and why?
 ```{r}
 df1 %>%
   na.omit() %>%
-  #ggplot(aes( x = Exercise, y = Award, fill = Year)) +
   ggplot(aes( x = Award, y = Exercise, fill = Year)) +
-  #geom_col() +
-  geom_bar(position="fill", stat="identity") +
-  #coord_flip() +
+ # geom_bar(position="fill", stat="identity") +
+  geom_bar(position = "fill", stat = "summary", fun.y = "mean")+
   labs( title = "Percentage stacked bar chart of average `Exercise` by `Award`" )
 
 ```
+
 I prefer the percentage plot, because it can show how much difference there is in terms of the amount of exercise people do in different grades for different awards.
 
 
@@ -69,30 +71,41 @@ I prefer the percentage plot, because it can show how much difference there is i
 
 Data: *bad_drivers* in **fivethirtyeight ** package
 
-a)  Draw two histograms--one with base R and the other with **ggplot2**--of the variable representing the Percentage of drivers involved in fatal collisions who were alcohol-impaired without setting any parameters. What is the default method each uses to determine the number of bins? (For base R, show the calculation.) Which do you think is a better choice for this dataset and why?
+#a)  Draw two histograms--one with base R and the other with **ggplot2**--of the variable representing the Percentage of drivers involved in fatal collisions who were alcohol-impaired without setting any parameters. What is the default method each uses to determine the number of bins? (For base R, show the calculation.) Which do you think is a better choice for this dataset and why?
 ```{r}
 #install.packages("fivethirtyeight")
 library(fivethirtyeight)
 df2<- tibble(bad_drivers)
 
+hist(df2$perc_alcohol, main = "base r")
+
 df2 %>%
   ggplot( aes(x = perc_alcohol)) +
-  geom_histogram()
+  geom_histogram() +
+  labs( title = "ggplot2")
 
 ```
 
 
 
-b) Draw two histograms of the `perc_alcohol` variable with boundaries at multiples of 5, one right closed and one right open. Every boundary should be labeled (15, 20, 25, etc.)
+#b) Draw two histograms of the `perc_alcohol` variable with boundaries at multiples of 5, one right closed and one right open. Every boundary should be labeled (15, 20, 25, etc.)
+
 ```{r}
+hist(df2$perc_alcohol, ylim = c(0, 25), xlab = "right closed", font.lab = 2)
 
-
+hist(df2$perc_alcohol, right = FALSE, ylim = c(0, 25), xlab = "right open", font.lab = 2)
 ```
 
+#c)  Adjust parameters--the same for both--so that the right open and right closed versions become identical. Explain your strategy. 
 
+```{r}
+#hist(df2$perc_alcohol, breaks = seq(15, 45, length.out = 7), #The length should be n+1 where n is the #number of desired bins.
+#     ylim = c(0, 25), xlab = "right closed", font.lab = 2)
 
-c)  Adjust parameters--the same for both--so that the right open and right closed versions become identical. Explain your strategy. 
+hist(df2$perc_alcohol, ylim = c(0, 25), xlab = "right closed", font.lab = 2)
 
+hist(df2$perc_alcohol, right = FALSE, ylim = c(0, 25), xlab = "right open", font.lab = 2)
+```
 
 ### 3.Titanic Survival 
 
@@ -100,16 +113,68 @@ c)  Adjust parameters--the same for both--so that the right open and right close
 
 Data: *TitanicSurvival* in **carData** package
 
-a)  Use QQ (quantile-quantile) plots with theoretical normal lines to compare `age` of **passengers who did not survive from Titanic** for the three different levels of `passengerClass`. What are some findings and for which class does the distribution of the `age` variable appear to be closest to a normal distribution?
+#a)  Use QQ (quantile-quantile) plots with theoretical normal lines to compare `age` of **passengers who did not survive from Titanic** for the three different levels of `passengerClass`. What are some findings and for which class does the distribution of the `age` variable appear to be closest to a normal distribution?
+```{r}
+#install.packages("perc_alcohol")
+library(carData)
+library(tibble)
+library(ggplot2)
+library(tidyverse)
+df3<- tibble(TitanicSurvival)
+
+df3 %>%
+  filter(survived == "no") %>%
+  ggplot(aes(sample=age, color = passengerClass)) +
+  geom_qq(distribution = qnorm) +
+  stat_qq_line(distribution = qnorm, color="red") + #, size = 1
+  labs (title = "Q-Q")
+```
 
 
-b) Draw density histograms with density curves and theoretical normal curves overlaid of `age` for the three passenger classes.
+#b) Draw density histograms with density curves and theoretical normal curves overlaid of `age` for the three passenger classes.
+```{r}
+df3 %>%
+  filter( survived == "no") %>%
+  ggplot(aes(x = age)) +
+    geom_histogram(bins = 20, position="dodge", aes(y = ..density..)) +
+    geom_density(colour="red", adjust = 2) +
+    scale_y_continuous((limits = c(0, 0.04))) +
+    facet_wrap(~passengerClass ) +
+  labs( title = "density histogram and normality curve")
+```
 
 
-c) Use a statistical method of your choice, such as the Shapiro-Wilk test, to determine which `age` distribution is closest to a normal distribution.
+#c) Use a statistical method of your choice, such as the Shapiro-Wilk test, to determine which `age` distribution is closest to a normal distribution.
+```{r}
+first <- df3 %>%
+  filter( survived == "no") %>%
+  filter( passengerClass == "1st") 
+f<-  shapiro.test(first$age)
+
+second <- df3 %>%
+  filter( survived == "no") %>%
+  filter( passengerClass == "2nd") 
+s<- shapiro.test(second$age)
+
+third <- df3 %>%
+  filter( survived == "no") %>%
+  filter( passengerClass == "3rd") 
+t<- shapiro.test(third$age)
+
+f$p.value
+
+tibble("first class" = f$p.value, 
+       "second class" = s$p.value, 
+       "third class" = t$p.value)
+
+```
+The p-value of the first class is bigger than .05, we accept the null hypothesis that the data is normally distributed.
 
 
-d) Did all of the methods for testing for normality (a, b, and c) produce the same results? Briefly explain.
+#d) Did all of the methods for testing for normality (a, b, and c) produce the same results? Briefly explain.
+```{r}
+
+```
 
 
 ### 4. Birds
@@ -119,13 +184,65 @@ d) Did all of the methods for testing for normality (a, b, and c) produce the sa
 Data: *birds* in **openintro** package
 
 
-a) Use appropriate techniques to describe the distribution of the `speed` variable noting interesting features.
+#a) Use appropriate techniques to describe the distribution of the `speed` variable noting interesting features.
+```{r}
+#install.packages("openintro")
+library(openintro)
+df4<- tibble(birds)
+df4 %>% ggplot(aes(x = speed)) +
+  geom_histogram(bins = 20, aes(y = ..density..)) +
+  geom_density(colour="red", adjust = 6) +
+  labs( title = "histogram of speed")
+
+# looks like normally distributed
+df4 %>%
+  ggplot(aes(sample= speed)) +
+  geom_qq(distribution = qnorm) +
+  stat_qq_line(distribution = qnorm, color="red") + #, size = 1
+  labs (title = "Q-Q") +
+  labs( title = "Q-Q plot of speed")
+
+ks.test(df4$speed, "pnorm")
+```
+reject null hypothesis that data comes from normal distribution
+
+#b) Create horizontal boxplots of `speed`, one for each level of `time_of_day`.
+```{r}
+unique(df4$time_of_day)
+
+df4 %>%
+  mutate( time_of_day = fct_relevel( time_of_day, "Night",  "Dusk", "Day", "Dawn")) %>%
+  na.omit() %>%
+  ggplot (aes(time_of_day, speed))+
+  geom_boxplot() +
+  coord_flip() +
+  labs (title = "boxplot ")
+
+```
 
 
-b) Create horizontal boxplots of `speed`, one for each level of `time_of_day`.
+#c) Create ridgeline plots for the same data as in b)
+```{r}
+#install.packages("remotes")
+library(remotes)
+
+remotes::install_github("R-CoderDotCom/ridgeline@main")
+
+library(ridgeline)
+
+df5<- df4 %>% 
+  na.omit() %>%
+  mutate( time_of_day = fct_relevel( time_of_day, "Dawn",  "Day",  "Dusk", "Night")) 
+  
+ridgeline(df5$speed, df5$time_of_day,  
+          xlab = "speed",
+          ylab = "time of day",
+          main = "ridgeplot")
+```
 
 
-c) Create ridgeline plots for the same data as in b)
+#d) Compare the boxplot plots and the ridgeline plots. 
+```{r}
 
+```
 
-d) Compare the boxplot plots and the ridgeline plots. 
