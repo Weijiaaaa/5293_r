@@ -13,7 +13,7 @@ Read *Graphical Data Analysis with R*, Ch. 3
 ### 1. SATs
 
 [7 points]
-a
+
 Data: *StudentSurvey* in **Lock5withR** package
 (Remember to add a proper title and labels to every plot.)
 
@@ -33,11 +33,11 @@ df1 %>%
     na.omit() %>%
   ggplot(aes( x = SAT, y = Year)) +
   geom_boxplot() +
-  labs( title = "SAT score change along with Years" )
+  labs( title = "SAT scores for different grades of students" )
   
 ```
 
-It can be observed that in terms of median grade, junior students are doing better than all other grades, and first year students are doing the worst. Also, sophomore students SAT scores have outliers in two sides of the box, which means that there are sophomore students doing very good or very bad in the SAT tests. On contrary, there is no outliers for Junior students, meaning that junior students are doing well overall without anyone doing super well or getting left behind.
+It can be observed that in terms of median grade, junior students are doing better than all other grades, and first year students are doing the worst. Also, sophomore students SAT scores have outliers in two sides of the box, which means that there are sophomore students doing very good or very bad in the SAT tests. On contrary, there is no outliers for Junior students, meaning that junior students are doing well overall without anyone doing super well or getting left behind. For senior students there are 3 outliers, and for first year students there is 1 outlier. 
 
 
 #b)  Draw a grouped bar chart of average `Exercise` by `Award` filled with `Year`. (You can ignore NAs.)
@@ -62,7 +62,7 @@ df1 %>%
 
 ```
 
-I prefer the percentage plot, because it can show how much difference there is in terms of the amount of exercise people do in different grades for different awards.
+Which one do I prefer depends on the problem I want to analyse. For the percentage stacked barchart, it could be easier for us to compare for students in the same grade, the difference of average time of exercise they would do when they want to win different awards. And for the boxplot, it is easier to compare the difference of average exercise time for students who want to win different kinds of award. 
 
 
 ### 2. Bad Drivers
@@ -86,6 +86,12 @@ df2 %>%
 
 ```
 
+For bins, ggplot2 uses 30 bins by default while base R hist function uses the Sturges method to calculate the number of bins.
+
+For base r, Sturges’ Rule uses a formula to determine the optimal number of bins to use in a histogram: 
+Optimal Bins = [$\log_{2}n$ + 1], where n is the total number of observations in the dataset, and the [] means ceiling, which is rounding the number inside up to the nearest integer.
+
+I think the default method of base r is better because it can give a better bin that can fit different data, as not all data need 30 bins which is determined by the ggplot2. This difference can be shown clearly from the two plots above as well, from the ggplot2 plot we can see there are a lot of gaps between the bars, which means that there is no data in the range.
 
 
 #b) Draw two histograms of the `perc_alcohol` variable with boundaries at multiples of 5, one right closed and one right open. Every boundary should be labeled (15, 20, 25, etc.)
@@ -99,13 +105,20 @@ hist(df2$perc_alcohol, right = FALSE, ylim = c(0, 25), xlab = "right open", font
 #c)  Adjust parameters--the same for both--so that the right open and right closed versions become identical. Explain your strategy. 
 
 ```{r}
-#hist(df2$perc_alcohol, breaks = seq(15, 45, length.out = 7), #The length should be n+1 where n is the #number of desired bins.
-#     ylim = c(0, 25), xlab = "right closed", font.lab = 2)
+hist(df2$perc_alcohol, breaks = seq(14.5, 49.5, 5), 
+     xlab = "right closed", font.lab = 2, axes = FALSE)
+axis(1, at = seq(14.5, 49.5, 5))
+axis(2, at = 0:25, las = 2)
 
-hist(df2$perc_alcohol, ylim = c(0, 25), xlab = "right closed", font.lab = 2)
+hist(df2$perc_alcohol, breaks = seq(14.5, 49.5, 5), 
+     right = FALSE, xlab = "right open", font.lab = 2, axes = FALSE)
+axis(1, at = seq(14.5, 49.5, 5))
+axis(2, at = 0:25, las = 2)
 
-hist(df2$perc_alcohol, right = FALSE, ylim = c(0, 25), xlab = "right open", font.lab = 2)
 ```
+
+My strategy is that since the biggest difference for the two plots is to include different boundary values, then setting the boundaries of the bars to be decimal values could let non of them include the boundary values which can make the two plots to be identical.
+
 
 ### 3.Titanic Survival 
 
@@ -124,12 +137,14 @@ df3<- tibble(TitanicSurvival)
 
 df3 %>%
   filter(survived == "no") %>%
-  ggplot(aes(sample=age, color = passengerClass)) +
-  geom_qq(distribution = qnorm) +
-  stat_qq_line(distribution = qnorm, color="red") + #, size = 1
+  ggplot(aes(sample=age)) +
+    geom_qq(distribution = qnorm) +
+    stat_qq_line(distribution = qnorm, color="red") + #, size = 1
+    facet_wrap(~passengerClass) +
   labs (title = "Q-Q")
 ```
 
+It can be seen from the three Q-Q plots that the age first class victims is more likely to be normally distributed, while the other two classes are not.
 
 #b) Draw density histograms with density curves and theoretical normal curves overlaid of `age` for the three passenger classes.
 ```{r}
@@ -143,6 +158,7 @@ df3 %>%
   labs( title = "density histogram and normality curve")
 ```
 
+Comparing to second and third class, the first class is still more likely to be normally distributed.
 
 #c) Use a statistical method of your choice, such as the Shapiro-Wilk test, to determine which `age` distribution is closest to a normal distribution.
 ```{r}
@@ -163,18 +179,21 @@ t<- shapiro.test(third$age)
 
 f$p.value
 
-tibble("first class" = f$p.value, 
-       "second class" = s$p.value, 
-       "third class" = t$p.value)
+tibble("first class p"  = f$p.value, 
+       "second class p" = s$p.value, 
+       "third class p"  = t$p.value)
 
+tibble("first class num"  = nrow(first), 
+       "second class num" = nrow(second), 
+       "third class num"  = nrow(third))
+#
 ```
-The p-value of the first class is bigger than .05, we accept the null hypothesis that the data is normally distributed.
+The p-value of the first class is bigger than 0.05, we accept the null hypothesis that the data is normally distributed. On the contrary, second and third class are not normally distributed as their p-value are much less than 0.05.
 
 
 #d) Did all of the methods for testing for normality (a, b, and c) produce the same results? Briefly explain.
-```{r}
 
-```
+All the methods for testing produces the same result that the age of first class victims is more likely to be normally distributed. This could due to the fact that the age of all passengers from first class, survived or not survived, is already normally distributed while passengers from other classes could concentrate more on younger people or middle aged people. Or to say, the younger and middle aged people in second and third class helped more older people to get out of the ship so that less old people died in the end, causing the age to be more like a positively skewed distribution.
 
 
 ### 4. Birds
@@ -199,12 +218,13 @@ df4 %>%
   ggplot(aes(sample= speed)) +
   geom_qq(distribution = qnorm) +
   stat_qq_line(distribution = qnorm, color="red") + #, size = 1
-  labs (title = "Q-Q") +
   labs( title = "Q-Q plot of speed")
 
 ks.test(df4$speed, "pnorm")
 ```
-reject null hypothesis that data comes from normal distribution
+From the density histogram, we can see that the most airplanes have a speed of 110 to 150, and planes with a speed of 125 (approximately)  are the most. Also, there is a little gap between 210 and 250, with a lot less planes having a speed of 240 (approximately) but a lot more planes with a speed of 250.
+
+It seems like a normal distribution from the density histogram, but from Q-Q plot and KS-test we know the data is not normally distributed. 
 
 #b) Create horizontal boxplots of `speed`, one for each level of `time_of_day`.
 ```{r}
@@ -216,7 +236,7 @@ df4 %>%
   ggplot (aes(time_of_day, speed))+
   geom_boxplot() +
   coord_flip() +
-  labs (title = "boxplot ")
+  labs (title = "boxplot of air speed in different times of the day")
 
 ```
 
@@ -230,19 +250,21 @@ remotes::install_github("R-CoderDotCom/ridgeline@main")
 
 library(ridgeline)
 
-df5<- df4 %>% 
+#install.packages("ggridges")
+#remotes::install_github("wilkelab/ggridges")
+
+library(ggridges)
+df4 %>%
   na.omit() %>%
-  mutate( time_of_day = fct_relevel( time_of_day, "Dawn",  "Day",  "Dusk", "Night")) 
-  
-ridgeline(df5$speed, df5$time_of_day,  
-          xlab = "speed",
-          ylab = "time of day",
-          main = "ridgeplot")
+  ggplot(aes(x =speed, y = time_of_day)) +
+  geom_density_ridges(scale = 2) +
+  labs( title = "Ridgeline plot of air speed in different times of the day"  )
+         
 ```
 
 
 #d) Compare the boxplot plots and the ridgeline plots. 
-```{r}
 
-```
+The boxplot can give us a clear view of how the median value of speed are different at different times of the day and also tell us how many outliers are there, which cannot be shown by the ridgeline plot. However, the ridgeline plot can tell us the distribution of the different times and how different their mean values are, which cannot be told by the boxplot.
+
 
