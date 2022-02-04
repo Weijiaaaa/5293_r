@@ -3,6 +3,7 @@ title: "Problem Set 1 Spring 2022"
 output:
   html_document:
     df_print: paged
+  word_document: default
 ---
 
 
@@ -29,7 +30,7 @@ typeof(df1$Year)
 unique(df1$Year)
 
 df1 %>%
-  mutate( Year = fct_relevel( df1$Year, "FirstYear", "Sophomore", "junior")) %>%
+  mutate( Year = fct_relevel( df1$Year, "FirstYear", "Sophomore", "Junior")) %>%
     na.omit() %>%
   ggplot(aes( x = SAT, y = Year)) +
   geom_boxplot() +
@@ -37,7 +38,7 @@ df1 %>%
   
 ```
 
-It can be observed that in terms of median grade, junior students are doing better than all other grades, and first year students are doing the worst. Also, sophomore students SAT scores have outliers in two sides of the box, which means that there are sophomore students doing very good or very bad in the SAT tests. On contrary, there is no outliers for Junior students, meaning that junior students are doing well overall without anyone doing super well or getting left behind. For senior students there are 3 outliers, and for first year students there is 1 outlier. 
+It can be observed that in terms of median grade, junior students are doing better than all other grades, and first year students are doing the worst. Also, sophomore students SAT scores have outliers in two sides of the box, which means that there are sophomore students doing very good or very bad in the SAT tests. On contrary, there is no outlier for Junior students, meaning that junior students are doing well overall without anyone doing super well or getting left behind. For senior students there are 3 outliers, and for first year students there is 1 outlier. 
 
 
 #b)  Draw a grouped bar chart of average `Exercise` by `Award` filled with `Year`. (You can ignore NAs.)
@@ -77,12 +78,16 @@ Data: *bad_drivers* in **fivethirtyeight ** package
 library(fivethirtyeight)
 df2<- tibble(bad_drivers)
 
-hist(df2$perc_alcohol, main = "base r")
+hist(df2$perc_alcohol, main = "base r", 
+     sub = "percentage of drivers involved in fatal collisions who were alcohol-impaired",
+     xlab = "perc_alcohol")
 
 df2 %>%
   ggplot( aes(x = perc_alcohol)) +
   geom_histogram() +
-  labs( title = "ggplot2")
+  labs( title = "ggplot2",
+        subtitle = "percentage of drivers involved in fatal collisions who were alcohol-impaired",
+        x = "perc_alcohol")
 
 ```
 
@@ -91,33 +96,37 @@ For bins, ggplot2 uses 30 bins by default while base R hist function uses the St
 For base r, Sturges’ Rule uses a formula to determine the optimal number of bins to use in a histogram: 
 Optimal Bins = [$\log_{2}n$ + 1], where n is the total number of observations in the dataset, and the [] means ceiling, which is rounding the number inside up to the nearest integer.
 
-I think the default method of base r is better because it can give a better bin that can fit different data, as not all data need 30 bins which is determined by the ggplot2. This difference can be shown clearly from the two plots above as well, from the ggplot2 plot we can see there are a lot of gaps between the bars, which means that there is no data in the range.
+I think the default method of base r is better because it can give a bin that can fit the data better. This can be shown clearly from the two plots above, from the ggplot2 plot we can see there are a lot of gaps between the bars, which means that there is no data in the range. So the default bins for ggplot2 is not very good.
 
 
 #b) Draw two histograms of the `perc_alcohol` variable with boundaries at multiples of 5, one right closed and one right open. Every boundary should be labeled (15, 20, 25, etc.)
 
 ```{r}
-hist(df2$perc_alcohol, ylim = c(0, 25), xlab = "right closed", font.lab = 2)
+hist(df2$perc_alcohol, ylim = c(0, 25), xlab = "ex.(15,20]", font.lab = 2, 
+     main = "Histogram of perc_alchole, right closed")
 
-hist(df2$perc_alcohol, right = FALSE, ylim = c(0, 25), xlab = "right open", font.lab = 2)
+hist(df2$perc_alcohol, right = FALSE, ylim = c(0, 25), xlab = "ex.[15,20)", font.lab = 2,
+      main = "Histogram of perc_alchole, right open")
 ```
 
 #c)  Adjust parameters--the same for both--so that the right open and right closed versions become identical. Explain your strategy. 
 
 ```{r}
 hist(df2$perc_alcohol, breaks = seq(14.5, 49.5, 5), 
-     xlab = "right closed", font.lab = 2, axes = FALSE)
+     xlab = "ex.(15,20]", font.lab = 2, axes = FALSE,
+     main = "Histogram of perc_alchole, right closed")
 axis(1, at = seq(14.5, 49.5, 5))
 axis(2, at = 0:25, las = 2)
 
 hist(df2$perc_alcohol, breaks = seq(14.5, 49.5, 5), 
-     right = FALSE, xlab = "right open", font.lab = 2, axes = FALSE)
+     right = FALSE, xlab = "ex.[15,20)", font.lab = 2, axes = FALSE,
+     main = "Histogram of perc_alchole, right open")
 axis(1, at = seq(14.5, 49.5, 5))
 axis(2, at = 0:25, las = 2)
 
 ```
 
-My strategy is that since the biggest difference for the two plots is to include different boundary values, then setting the boundaries of the bars to be decimal values could let non of them include the boundary values which can make the two plots to be identical.
+My strategy is that since the biggest difference for the two plots is to include different boundary values, then setting the boundaries of the bars to be decimal values could let non of them include the boundary values thus making the two plots identical.
 
 
 ### 3.Titanic Survival 
@@ -141,7 +150,7 @@ df3 %>%
     geom_qq(distribution = qnorm) +
     stat_qq_line(distribution = qnorm, color="red") + #, size = 1
     facet_wrap(~passengerClass) +
-  labs (title = "Q-Q")
+  labs (title = "Q-Q plot of age in different classes")
 ```
 
 It can be seen from the three Q-Q plots that the age first class victims is more likely to be normally distributed, while the other two classes are not.
@@ -155,7 +164,7 @@ df3 %>%
     geom_density(colour="red", adjust = 2) +
     scale_y_continuous((limits = c(0, 0.04))) +
     facet_wrap(~passengerClass ) +
-  labs( title = "density histogram and normality curve")
+  labs( title = "Density histogram and normality curve of age in different classes")
 ```
 
 Comparing to second and third class, the first class is still more likely to be normally distributed.
@@ -178,14 +187,13 @@ third <- df3 %>%
 t<- shapiro.test(third$age)
 
 f$p.value
+tibble("first class num"  = nrow(first), 
+       "second class num" = nrow(second), 
+       "third class num"  = nrow(third))
 
 tibble("first class p"  = f$p.value, 
        "second class p" = s$p.value, 
        "third class p"  = t$p.value)
-
-tibble("first class num"  = nrow(first), 
-       "second class num" = nrow(second), 
-       "third class num"  = nrow(third))
 #
 ```
 The p-value of the first class is bigger than 0.05, we accept the null hypothesis that the data is normally distributed. On the contrary, second and third class are not normally distributed as their p-value are much less than 0.05.
@@ -211,7 +219,7 @@ df4<- tibble(birds)
 df4 %>% ggplot(aes(x = speed)) +
   geom_histogram(bins = 20, aes(y = ..density..)) +
   geom_density(colour="red", adjust = 6) +
-  labs( title = "histogram of speed")
+  labs( title = "Density histogram of speed")
 
 # looks like normally distributed
 df4 %>%
@@ -236,7 +244,7 @@ df4 %>%
   ggplot (aes(time_of_day, speed))+
   geom_boxplot() +
   coord_flip() +
-  labs (title = "boxplot of air speed in different times of the day")
+  labs (title = "Boxplot of air speed in different times of the day")
 
 ```
 
@@ -246,7 +254,7 @@ df4 %>%
 #install.packages("remotes")
 library(remotes)
 
-remotes::install_github("R-CoderDotCom/ridgeline@main")
+#remotes::install_github("R-CoderDotCom/ridgeline@main")
 
 library(ridgeline)
 
