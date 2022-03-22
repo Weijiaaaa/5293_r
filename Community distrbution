@@ -3,7 +3,6 @@
 3. Chapter 6 Rounding noraml distrubution
 
 3.1 Q-Q plot   
-
     3.1.1 What is a Q-Q plot?
     If the line is not 45 degrees, then it is not normally distrubtted
     //////////////
@@ -27,5 +26,43 @@
                                               color = "black") +
             geom_density(lwd = 1.5) +
             stat_function(fun = dnorm, args = list(mean = 50, sd = 10), color = "red", lwd = 1.5)
+    
+3.3 Shapiro Wilk test
+    3.3.1 What is this
+    Null hypothesis: data is normally distributed
+    Alternative hypothesis: data is not normally distributed
+    
+    3.3.2 How 
+    > shapiro.test(x)
+    if P-value is very small, then the null hypothesis could be rejected.
+    
+    
+    
+4. Grammar of Graphics
+    4.1 Mapping
+    aes(x = x, y = y, color = "color", fill = "fill")
+    
+    4.2 Scale
+        scale_x_date()
+        scale_y_continuous()
+        scale_color_manual()
+        scale_fill_viridis_c() 
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     
      
