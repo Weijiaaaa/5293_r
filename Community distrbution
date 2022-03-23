@@ -1,6 +1,6 @@
-shape: change the shape of points into squares, triangles according to the category of variable
-color: 
-size:
+shape: changes the shape of points into squares, triangles according to the category of variable
+color: changes colors, specify types.
+size: changes the size of shapes?
 scale_fill_manual(values = c("#ff99ff", "#cc9966")) # fill color into bar chart
 span: geom_smooth(method = "loess", span = .1, se = FALSE)
 
