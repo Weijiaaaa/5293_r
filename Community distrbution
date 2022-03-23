@@ -4,6 +4,82 @@ size:
 scale_fill_manual(values = c("#ff99ff", "#cc9966")) # fill color into bar chart
 
 
+
+----------------------------------------------------------
+
+** Chapter 3 Continuous variables **
+
+Tool: historams
+
+base R: hist(x, col = "color")
+ggplot2:   geom_histogram(color = "blue", fill = "lightblue", binwidth = 5, center = 52.5) + theme_grey(14))
+
+
+** Bindwidth **
+
+** Bin Boundaries: **
+
+1. right closed (55, 60] or right open [55, 60)
+-code: right = TRUE or FALSE
+
+hist(x, right = FALSE, ylim = c(0, 4), xlab = "right open ex. [55, 60)", font.lab = 2)
+
+2. set bin boundaries by hand: breaks = seq(start, stop, gap)
+base R: hist(x, breaks = seq(47.5, 72.5, 5), col = "lightblue",
+     axes = FALSE)
+     
+
+** Types of histogram **
+
+* Frequency (count) histogram
+x <- hist(prices, breaks = seq(300, 800, 100), col = "lightblue", las = 1)
+          
+* Density histogram: freq = FALSE
+hist(prices, breaks = c(300, 400, 500, 600, 700, 800),
+     freq = FALSE, col = "lightblue", ylab = "",
+     main = "Density Histogram", las = 1)
+
+* Calculate: Density histogram with unequal bin widths
+g2 <- ggplot(df, aes(x = center, y = percent/(100*binwidth), 
+               width = binwidth)) + 
+    geom_col(color = "blue", fill = "lightblue") +
+    ylab("density") + xlab("age") +
+    scale_x_continuous(breaks = c(0, df$breaks)) +
+    ggtitle("Census 2000: Zip Code 10027")
+
+
+* Cumulative frequency histogram:
+geom_histogram(aes(y = cumsum(..count..)),
+                   color = "blue", fill = "lightblue")
+
+
+* change bindwidth interactively: ggvis
+
+df %>% ggvis(~GDP) %>% 
+    layer_histograms(fill := "green", 
+                     width = input_slider(500, 10000, 
+                                          value = 5000, 
+                                          step = 500,
+                                          label = "width"))
+
+
+
+** Chapter 4 Boxplots **
+
+* How to draw: geom_boxplot() 
+
+meaning of each line:
+min, 分位点
+
+
+*Outliers:
+if the observation is 2.5 times further than the lower hinge, then it should be an outlier
+
+
+
+** Quantiles **
+----------------------------------------------------------
+
 3. Chapter 6 Rounding noraml distrubution
 
 3.1 Q-Q plot   
