@@ -1,0 +1,431 @@
+---
+title: "Problem Set 2 Spring 2022"
+author: jl5991, ww2589 
+date: 
+output: html_document
+---
+
+```{r setup, include=FALSE, message = FALSE, warning = FALSE}
+# this prevents package loading message from appearing in the rendered version of your problem set 
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+```
+
+Note: Grading is based both on your graphs and verbal explanations. Follow all best practices *as discussed in class*, including choosing appropriate parameters for all graphs. *Do not expect the assignment questions to spell out precisely how the graphs should be drawn. Sometimes guidance will be provided, but the absense of guidance does not mean that all choices are ok.*
+
+Read *Graphical Data Analysis with R*, Ch. 4, 5
+
+### 1. Netflix
+
+[5 points]
+
+Data: `netflix.csv`
+
+a) Create a frequency bar chart for movie ratings in the US. (Hint: if you're not familiar with U.S. movie ratings, look them up.)
+```{r}
+library("readxl")
+df <- read_excel("D:/【CU】2022 Spring/5293_r/Pset2/netflix.xls")
+#head(df)
+#tail(df)
+```
+
+```{r}
+unique(df$rating)
+```
+
+```{r}
+library(tidyverse)
+
+#df<- df %>%
+#  na.omit() %>%
+#  mutate(rating = factor(rating, levels=c(
+#    "PG-13"  ,  "TV-MA" ,   "PG"      , "TV-14" ,   "TV-PG"  ,  "TV-Y" ,    "TV-Y7" ,   "R", "TV-G"  ,  
+#    "G"      ,  "NC-17" ,   "74 min"  , "84 min",   "66 min" ,  "NR"   ,    "TV-Y7-FV", "UR"
+#  ))) 
+#
+#df %>%
+#  ggplot(aes(x = rating)) + 
+#    geom_histogram(stat="count") +
+#    theme(axis.text.x = element_text(angle = 30, vjust = 0.5, hjust=1)) +
+#    ggtitle ("Frequency bar chart of ratings")
+
+df %>% 
+  filter(country == "United States" & type == "Movie" & !(rating %in% c("66 min", "74 min", "84 min"))) %>%
+  mutate(rating = fct_infreq(rating) %>%
+           fct_rev()) %>%
+  ggplot(aes(y = rating, x = ..prop.., group = 1)) +
+  geom_bar() +
+  labs(x = "Frequency", y = "Rating Tyoe",
+       title = "Frequency bar chart of ratings")
+  
+
+```
+
+I omitted NAs, 66 74 84min are all gone. 8870-5332个obs被drop
+
+
+b) Classify the release year of each movie into three time periods: before 2000, 2000-2009, 2010 or later). Create a frequency bar chart of the ratings faceted on the time period.
+```{r fig.width = 14, fig.height = 7} 
+df %>%
+  mutate(time_period = case_when(release_year < 2000 ~"Before 2000",
+                          release_year <= 2009 & release_year >= 2000 ~"2000 - 2009",
+                          release_year >= 2010 ~"2010 or later")) %>%
+  mutate(time_period = fct_relevel(time_period, "Before 2000","2000 - 2009", "2010 or later")) %>%
+ # select(time_period, release_year, everything()) %>%
+  ggplot(aes(x = rating)) + 
+    geom_histogram(stat="count") +
+  facet_grid(~time_period) +
+  theme(axis.text.x = element_text(angle = 60, vjust = 0.5, hjust=1)) +   #翻转坐标
+  labs(title = "Frequency bar chart of ratings")
+```
+
+c) Compare a) and b). What do you observe?
+
+
+
+### 2. Nutrition
+
+[10 points]
+
+Data: `nutrients.csv`
+
+The original source of the data is: https://en.wikipedia.org/wiki/Table_of_food_nutrients though there may be discrepancies between values on this page and the dataset.
+
+**Note** In the `Measure` column, "t" = teaspoon and "T" = tablespoon. In the food nutrient columns, the letter "t" indicates that only a trace amount is available (which you can assume is 0).
+
+a) Define calorie density as calories per gram. Create a Cleveland dot plot for the 10% of foods with the highest calorie density. Note any data abnormalities in the plot.
+```{r}
+df<- read.csv("D:/【CU】2022 Spring/5293_r/Pset2/nutrients.csv")
+#head(df)
+```
+
+```{r}
+
+## 用哪个？？
+
+df1<- df %>%    #lecture 11 code P32
+  #na.omit() %>%
+  mutate(Calories = as.numeric(Calories),
+         Grams = as.numeric(Grams)) %>%
+  mutate(Calorie_density = Calories/Grams) %>%
+  mutate(Food = factor(Food)) %>%
+ # select(Food, Calorie_density, everything()) %>%
+  arrange(desc(Calorie_density)) %>%
+  mutate(mybin = ntile(Calorie_density, 10))  
+
+df1 %>%
+  filter(mybin == 10) %>%
+  ggplot(aes(x = Calorie_density, y = fct_reorder(Food, Calorie_density))) +
+  geom_point()+ 
+    labs(title = "第一种图 Dot plot for food with high calorie density",
+       x = "Calorie Density",
+       y = "Food")
+```
+
+```{r}
+
+## 用哪个？？
+
+df1<- df %>%    #lecture 11 code P32
+  #na.omit() %>%
+  mutate(Calories = as.numeric(Calories),
+         Grams = as.numeric(Grams)) %>%
+  mutate(Calorie_density = Calories/Grams) %>%
+  mutate(Food = factor(Food)) %>%
+  #select(Food, Calorie_density, everything()) %>%
+  arrange(desc(Calorie_density)) #%>%
+df1 %>%
+  mutate(mybin = ntile(Calorie_density, 10))  %>%
+  filter(mybin == 10) %>%
+  ggplot(aes(x = fct_reorder(Food, Calorie_density), y = Calorie_density, )) +
+  geom_point()+ 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+    labs(title = "第二种图 Dot plot for food with high calorie density",
+       x = "Food",
+       y = "Calorie Density")
+```
+
+
+b) Determine the food categories with the highest and lowest mean calorie density. Create a Cleveland dot plot of calorie density by food, showing only these two categories. (Facet by `Category`.) Note any data abnormalities in the plot.
+```{r}
+df2<- df1 %>% 
+  na.omit() %>%
+  #select(Food, Calorie_density, Category, everything()) %>%
+  group_by(Category) %>%
+  summarize(mean_cal = mean(Calorie_density)) %>%
+  arrange(desc(mean_cal))
+df2
+```
+
+* Omitted the NAs, including 5 observations in "Breads, cereals, fastfood, grains", "Dairy products", "Vegetables A-E", "Vegetables R-Z" categories.
+
+From df2 we can see "Fats, Oils, Shortenings" category has the highest mean calorie density, and "Vegetables F-P" category has the lowest mean calorie density.
+
+```{r fig.width = 7, fig.height = 10} 
+df1 %>%
+  filter(Category %in% c("Fats, Oils, Shortenings", "Vegetables F-P")) %>%
+  ggplot(aes(x = Calorie_density, y = fct_reorder(Food, Calorie_density))) +
+  geom_point() +
+  facet_wrap(~Category, ncol = 1) +
+  labs(title = "Food category vs. Mean calorie density",
+       x = "Calorie Density",
+       y = "Food")
+
+```
+
+
+c) Use the same method as above to calculate protein density and carbohydrate density. Create a scatterplot of protein density vs. carbohydrate density faceted by category. To make the plot look better, combine different `Fruit` categories into one new category and do the same for `Vegetables`. What can you learn from the plot?
+
+```{r fig.width = 14, fig.height = 20} 
+#fig.align="center", 
+#在setup里改图宽度
+df1<- df1 %>%
+  mutate(Protein = as.numeric(Protein),
+         Carbs = as.numeric(Carbs)) %>%
+  mutate(Protein_density = Protein/Grams,
+         Carbs_density = Carbs/Grams,) %>%
+  #select(Food, Protein_density, Carbs_density, everything()) %>%
+  arrange(desc(Protein_density))
+head(df1)    
+
+# protein density, carbs density 有大于1的？
+
+typeof(df1$Category)
+
+df1 %>%
+  mutate(Category = factor(Category)) %>%
+  mutate(Category = fct_recode(Category,  "Fruit" = "Fruits A-F",
+                                          "Fruit" = "Fruits G-P",
+                                          "Fruit" = "Fruits R-Z")) %>%
+  mutate(Category = fct_recode(Category,  "Vegitables" = "Vegetables A-E",
+                                          "Vegitables" = "Vegetables F-P",
+                                          "Vegitables" = "Vegetables R-Z")) %>%
+  ggplot(aes(Protein_density, Carbs_density))+
+  geom_point() +
+  facet_grid(~Category) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  labs(title = "protein density vs. carbohydrate density")
+```
+
+From the plot we can see that the categories could be divided into 4 major categories according to their protein and carbohydrate density:
+
+1. Low carbs, low protein: "Drinks, Alcohol, Beverages", "Soup" and "Vegitables" 
+
+2. High Carbs, low pritein: "Desserts, sweets", "Jams, Jellies" and "Fruit"
+
+3. Low carbs, high protein: "Fish, Seafood", "Meat, Poultry", "Diary products"
+
+4. High carbs, high protein: "Breads, cereals, fastfood, grain", "Seeds and Nuts", "Fats, Oils, Shortenings"
+
+Apart from that, "Fate, Oils, Shortenings" and ""Fish, Seafood" each have an obvious outlier with high protein and high carbohydrate. For health consideration, these two food should be avoided in daily diets. 
+
+
+
+
+d) Create an interactive scatterplot of protein calories vs. overall calories which shows the food name when you hover over a point. Explain how you calculated protein calories. If you find clear errors in the data based on this ratio remove the problematic rows and redraw, clearly stately which rows were removed. What are some foods with very high ratios of protein calories to overall calories? With very low ratios?
+```{r}
+#install.packages("plotly")
+library(plotly)  
+g1<-  df1 %>% 
+  mutate(protein_calories = Protein_density*Calories) %>%
+  select(Food, protein_calories, everything()) 
+
+plot_ly(g1, 
+        #x = ~protein_calories, 
+        #y = ~Calories,
+        x = ~Calories,
+        y = ~protein_calories, 
+        text = ~Food, 
+        hoverinfo = 'text') %>%       #%>% color = ~Category, #add_markers()
+  layout(title="Protein calories vs. overall calories", 
+         xaxis = list(title = 'Protein Calories'), 
+         yaxis = list(title = 'Overall Calories')) 
+
+```
+
+
+e) The National Academy of Medicine in the United States recommends that protein should account for 10%-35% of one's daily caloric intake. (See: https://www.hsph.harvard.edu/nutritionsource/what-should-you-eat/protein/) Suppose you wish to follow this recommendation and to make things simple you want to only eat foods with this percentage of protein. To assist you with this eating plan, create a static version of your graph from part d) in which food points are colored by their protein content as follows:
+
+<div style="width:325px;">
+|% calories from protein|label|
+|-|-|
+|< 10%|too little protein|
+|10% - 35%|recommended protein|
+|> 35%|too much protein|
+</div>
+
+Add lines to serve as boundaries between different colored points. Label some of the points with the food name using `ggrepel::geom_text_repel()` (It will drop many of the points due to overlaps.)
+
+(To be clear, this isn't a sensible diet! One should consider the percentage of protein overall not on a food by food basis.)
+```{r}
+library(ggrepel)
+g1 %>%
+  mutate(protein_content = case_when(Protein_density<0.1 ~"To little protein",
+                                     Protein_density>=0.1 & Protein_density<=0.35 ~"Recommended protein",
+                                     Protein_density>0.35 ~"Too much protein")) %>%
+  ggplot(aes(x = protein_calories, y = Calories, color = protein_content)) +
+  geom_point() +
+ # xlim(0, 200) + ylim(0, 1500) +
+  geom_text_repel(aes(x = protein_calories, y = Calories, label = Food)) +
+  theme_classic(base_size = 10) +
+  #geom_polygon(fill = "white", colour = "grey50", group = protein_content) +
+ # geom_smooth(method = "lm") +
+ # geom_line() +
+  geom_abline()
+  labs(title = "Protein situation for different food",
+       x = "Protein Calories",
+       y = "Overall Calories")
+
+```
+
+
+### 3. Babies
+
+[5 points]
+
+Data: `babies` in the **openintro** package
+
+For all, adjust parameters to the levels that provide the best views of the data.
+
+Draw four plots of `bwt` vs. `gestation` with the following variations:
+
+a) Scatterplot -- adjust point size and `alpha`.
+```{r}
+library(openintro)
+babies<- tibble(babies)
+```
+
+```{r}
+head(babies)
+babies %>%
+ # ggplot(aes(x = bwt, y = gestation)) +
+  ggplot(aes(x = gestation, y = bwt)) +
+  geom_point(alpha = 0.1, size = 3) +
+  labs( title ="Scatter plot of bwt vs. gestation")
+
+###lecture 11
+
+```
+
+b) Scatterplot with density contour lines
+```{r}
+babies %>%
+  #ggplot(aes(x = bwt, y = gestation)) +
+  ggplot(aes(x = gestation, y = bwt)) +
+  geom_density_2d() + 
+ # geom_density_2d_filled(alpha = 0.05) +
+  geom_point(alpha = 0.1, size = 3) +
+  theme_grey(10) +
+  labs( title ="Scatter plot with density contour lines of bwt vs. gestation")
+```
+
+c) Hexagonal heatmap of bin counts
+```{r}
+#install.packages("hexbin")
+
+babies %>%
+  #na.omit() %>%
+  #ggplot(aes(x = bwt, y = gestation)) +
+  ggplot(aes(x = gestation, y = bwt)) +
+  scale_fill_viridis_c() +
+  scale_fill_gradient(low = "grey", high = "purple") +
+  #theme_classic(18)
+  geom_hex(binwidth = c(5, 5))+ #+ geom_point(size = 2) +
+  #coord_fixed(ratio = 0.5)
+ # xlim(150, 400) +
+  labs( title = "Hexagonal heatmap of bwt vs. gestation") 
+
+```
+
+d) Square heatmap of bin counts
+
+```{r}
+babies %>%
+ # ggplot(aes(x = bwt, y = gestation)) +  #xlim(4, 10) + ylim(4, 10)
+  ggplot(aes(x = gestation, y = bwt)) +
+ # geom_bin_2d(bins = 30) +
+  geom_bin2d(binwidth = c(5, 5)) +
+  scale_fill_viridis_c()+
+ # coord_fixed(ratio = 0.5) +
+  labs( title = "Square heatmap of bwt vs. gestation") 
+```
+
+e) Describe noteworthy features of the data. 
+
+1. For outliers, most pregnancies give birth after 250-325 days of gestation, with only a few to be born less than 200 days or more than 300 days which can be considered as outliers. 
+
+2. From heatmaps we can see that 275 days of gestation is the most common pregnancy period and 125 ounces is the most common birthweight.
+
+3. In this question, heatmaps can tell more information than simple scatterplot.
+
+
+
+### 4. Gun deaths 
+
+Before completing the exercises, read "What the data says about gun deaths in the U.S." by John Gramlich, published on February 3, 2022 by Pew Research Center, available here: https://www.pewresearch.org/fact-tank/2022/02/03/what-the-data-says-about-gun-deaths-in-the-u-s/
+
+a) Provide the link for and specific name of the database used to access mortality statistics for 1999-2020.
+
+"Underlying Cause of Death, 1999-2020 Request -- Deaths occurring through 2020"
+https://wonder.cdc.gov/controller/datarequest/D76
+
+b) The article states that in 2020 "45,222 people died from gun-related injuries in the U.S." Use the CDC Wonder web interface to obtain the data needed to back up this claim. To keep track of what you've done and maintain a reproducible workflow, screenshot the query page or save it as a .pdf (In Chrome: File, Print..., Save as PDF) before you click the "send" button to retrieve the query. Display the screenshot(s) or upload the .pdf with your assignment.
+
+```{r pressure, echo=FALSE, fig.cap="A caption", out.width = '100%'}
+
+knitr::include_graphics("D:/【CU】2022 Spring/5293_r/Pset2/1.png")
+knitr::include_graphics("D:/【CU】2022 Spring/5293_r/Pset2/2.png")
+knitr::include_graphics("D:/【CU】2022 Spring/5293_r/Pset2/3.png")
+knitr::include_graphics("D:/【CU】2022 Spring/5293_r/Pset2/4.png")
+
+## Upload pdf and convert it to text:
+#install.packages("pdftools")
+#library(pdftools)
+#pdf <- pdf_text("D:/【CU】2022 Spring/5293_r/Pset2/Underlying Cause of Death, 1999-2020 Request Form.pdf")
+
+```
+
+
+c) Keep a copy of the downloaded file (raw data) that will not be changed. This file contains both the data and the metadata in a column called `Notes`. Separate this information into two data frames, one for data, and one for metadata and store them separately. *Do not make any manual changes to the files. Everything must be done in R and included in the assignment.* Display the first 20 rows of the metadata.
+```{r}
+tb<- read.table("D:/【CU】2022 Spring/5293_r/Pset2/IINJURY INTEND- GUN SHOT.txt", fill = TRUE, head = TRUE)
+head(tb)
+```
+```{r}
+data<- tb %>%
+  filter(Notes == "2020 ") %>%
+  tibble()
+
+meta<- tb %>%
+  filter(Notes != "2020 ") %>%
+  select(Notes) %>%
+  tibble()
+
+head(meta, 20)
+
+```
+
+
+d) Display the rows of your data that contain the gun-related deaths, and confirm that the sum is 45,222. Depending on how you did the initial query, you may need to filter the data first.
+```{r}
+names(data)
+data<- data %>%
+  purrr::set_names(c( "Year", "Year.Code", 
+                      "ICD.10.113.Cause.List", "ICD.10.113.Cause.List.Code", 
+                      "Deaths", "Population","Crude Rate", "", "")) 
+data<- data[,-c(8, 9)]
+data
+```
+```{r}
+gun<- data %>%
+  filter(ICD.10.113.Cause.List.Code %in% c("GR113-119", "GR113-128", "GR113-132", "GR113-125", "GR113-130")) 
+sum(gun$Deaths)
+```
+
+e) In the section of the article "What share of U.S. gun deaths are murders and what share are suicides?", the deaths are grouped into five categories: 1) suicides, 2) murders, 3) unintentional, 4) involved law enforcement, and 5) undetermined circumstances. Show that the counts provided are correct based on the data. Indicate which `Cause of death Code` values are included in each of the five categories. (You can do this manually after studying the data. It may be helpful to research online the codes used for these categories.)
+```{r}
+knitr::include_graphics("D:/【CU】2022 Spring/5293_r/Pset2/death code.png")
+```
+
+
+
+
