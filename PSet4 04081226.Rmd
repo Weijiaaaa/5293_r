@@ -1,0 +1,282 @@
+---
+title: "Problem Set 4 Spring 2022"
+author: Yige Chen, Weijia Wang
+date: 
+output: html_document
+---
+
+```{r setup, include=FALSE}
+# this prevents package loading message from appearing in the rendered version of your problem set 
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+```
+
+Note: Grading is based both on your graphs and verbal explanations. Follow all best practices *as discussed in class*, including choosing appropriate parameters for all graphs. *Do not expect the assignment questions to spell out precisely how the graphs should be drawn. Sometimes guidance will be provided, but the absense of guidance does not mean that all choices are ok.*
+
+### 1. Setup your GitHub final project repo
+
+a) Set up your final project repository following the [EDAVproject template](https://github.com/jtr13/EDAVtemplate). You can either choose one team member's GitHub account, or create an organization to house the final project. *Be sure to follow all of the steps in the README so your bookdown book renders with your information, not the placeholders in the template.* Edit the link below to point to your rendered book:
+
+```
+https://yigechen17.github.io/HawaiiTravelingData
+```
+
+b) Make sure that all team members have write access to the repository and have practiced making contributions. Edit the link below to point to your contributors page, showing that all team members have made contributions to the repo (Note that we do not have the ability to see who has write access, only who has contributed):
+
+```
+https://github.com/yigechen17/HawaiiTravelingData/graphs/contributors
+```
+
+c) Discuss a plan for dividing up the work for the final project and briefly summarize what each person will do.
+
+*Get data*: Manage filters on http://dbedt.hawaii.gov/visitor/tourismdata/. Decide and download useful data into csv files.  (*Weijia*)
+
+**EDA**: Check data size, range, and other basic information. Make some EDA plots to help us better understand the data. (*Yige*)
+
+**Preprocessing**: Check missing values or other possible errors and make appropriate adjustments to ensure the data is ready for our questions. (*Yige*)
+
+**Q1**: What kind of people like going to Hawaii for vacation, is Hawaii a good travel destination for students like us? (*Yige*)
+
+**Q2**: Can we make a perfect travel plan based on the activities of other tourists? (*Yige*)
+
+**Q3**: Is the tourism of Hawaii influenced by the pandemic? If it is, how bad? (*Weijia*)
+
+**Conclusions**: Make a summary about what we get and learn in this project. Give some future research direction or possible improving ideas. (*Weijia*)
+
+Yige's task: EDA, preprocessing, Q1, and Q2
+Weijia's task: Get data, Q3, and conclusions.
+
+Note: This is just a rough plan. In reality, many tasks may be finished together, and we may not strictly follow this plan.
+
+### 2. Missing values 
+
+For this question, use your final project data. Use a combination of graphical and non-graphical techniques complete the parts below. If your data for the final project has no missing values, you may use one of the following datasets instead for this question:
+
+**fivethirtyeight** package: `avengers`, `bachelorette`, `dem_candidates`, `steak_survey`, `trumpworld_polls`
+
+**openintro** package: `birds`, `ucla_textbooks_f18` 
+
+a) Describe missing patterns *by row*.
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(fivethirtyeight)
+
+trump<- trumpworld_polls
+
+nrow(trump)
+rowSums(is.na(trump)) %>%
+  sort(decreasing = TRUE)
+
+tidytrump<- trump %>%
+  rownames_to_column("id") %>%
+  gather(key, value, -id) %>% 
+  mutate(missing = ifelse(is.na(value), "yes", "no"))
+
+#ggplot(tidytrump, aes(x = key, y = id, fill = missing)) +
+#  geom_tile(color = "white") +
+#  theme(axis.text.x = element_text(angle = 60))
+
+trump %>%
+  pivot_longer(cols = -c("year", "avg", "question"),
+               names_to = "country",
+               values_to = "value") %>%
+  mutate(missing = ifelse(is.na(value), "yes", "no")) %>%
+  ggplot(aes(x = country, y = year, fill = missing)) +
+  geom_tile(color = "white") +
+  theme(axis.text.x = element_text(angle = 90))
+```
+
+We can see that among 32 rows, the row with the most of missing values has 33 missing values, and most rows are missing 20-22 values. Only 2 rows have no missing data. From the plot we can see the only row with no missing value is 2017. 2013-2015 do not have much missing values comparing to other years, and 2001, 2004, 2005 have most of the missing values. Also, for all years(rows), France, Germany and UK have no missing values at all.
+
+
+b) Describe missing patterns *by column*.
+
+```{r}
+colSums(is.na(trump)) %>%
+  sort(decreasing = TRUE)
+
+# calculate number missing by day
+missing <- tidytrump %>% 
+    group_by(key) %>% 
+    summarise(sum.na = sum(is.na(value)))
+
+# plot number missing by day
+ggplot(missing, aes(x = key, y = sum.na)) +
+  geom_col(color = "blue", fill = "lightblue") +
+  #scale_x_continuous(breaks = 1:28, labels = missing$key) +
+  ggtitle("Number of missing values by day") +
+  xlab("") +
+  ylab("Number of missing station values (out of 349)") +
+  theme(axis.text.x = element_text(angle = 90))
+```
+
+We can see that for all the columns, Hungary and Colombia have the most missing values of 28, while France, Germany and UK have the least missing values of 0. From the plot, we can see that Russia, Spain, Turkey also do not have a lot of missing values, while Vietnam, Venezuela, Nigeria and Tanzania have a lot of missing values.
+
+
+c) Describe missing patterns *by value*. 
+```{r}
+#install.packages("mi")
+library(mi)
+trumpp<- as.data.frame(trump)
+x <- missing_data.frame(trumpp)
+image(x)
+```
+
+We can see that there is plenty of missing data in this dataset. The majority of missing data focus on central America countries, like Venezuela and Columbia.
+
+
+
+d) Provide a brief assessment of how missing values might impact analysis of this data (whether for your final project or for one of the datasets listed above.)
+
+There are too many missing values, so it must have a significant impact on analysis of the dataset. Also, from the heatmap in question(a) we can see nearly half of the data are missing, so analysing the data should be pertty hard if these missing values are not handled properly.
+### 3. Price of metals
+
+Data: `metal_prices.csv` -- monthly price change of several metals since 1992. 
+
+a) Plot time series on price of alum and add a proper smoother, use `annotate("rect", ...)` to highlight the year with the biggest collapse in prices. What happened in this year which likely explains the price drop?
+
+```{r}
+metal_price = read.csv("metal_prices.csv")
+```
+```{r}
+library(lubridate)
+library(tidyverse)
+metal_price$Date = ymd(paste(as.character(metal_price$Year),metal_price$Month,"01",sep = ","))
+
+g = ggplot(metal_price, aes(Date, Price_alum)) +
+  geom_line() +
+  geom_smooth(method = "loess", span = .3, se = FALSE) + 
+  ggtitle("Price of Alum in Time") +
+  scale_x_date(date_breaks = "5 years", date_labels = "%Y") +
+  annotate("rect",xmin = ymd("2008-01-01"), xmax = ymd("2009-01-01"), ymin = -Inf, ymax = Inf, fill = "green", color = "green", alpha = .2) + 
+  annotate("text",x = ymd("2009-02-01"), y = 1250, label = "2008", hjust = 0, color = "green")
+  
+g
+```
+
+The year with the biggest collapse in alum prices is 2008. The financial crisis of 2008 may be able to explain this price drop.
+
+b) Create a multiple line chart of the prices of metals in the dataset.
+
+```{r}
+# g2 = ggplot(metal_price, aes(Date, Price_alum)) +
+#   geom_line(aes(Date, Price_alum, color = 'alum')) +
+#   geom_line(aes(Date, Price_nickel, color = 'nickel')) +
+#   geom_line(aes(Date, Price_silver, color = 'silver')) +
+#   geom_line(aes(Date, Price_uran, color = 'uran')) +
+#   ggtitle("Price of metals in Time") +
+#   ylab("Price of metals") +
+#   scale_x_date(date_breaks = "5 years", date_labels = "%Y")  +
+#   scale_color_manual(breaks=c('alum', 'nickel', 'silver','uran'),
+#                      values=c('alum' = "red", 'nickel' ="green", 'silver' = "blue",'uran' = "orange"))
+# 
+# g2
+```
+
+```{r}
+metal_price2 = metal_price%>% select(-c("Year", "Month"))%>% gather(key, Price, -Date)
+g2 = ggplot(metal_price2, aes(Date, Price, col = key)) +
+  geom_line() +
+  ggtitle("Price of Metals in Time") +
+  scale_x_date(date_breaks = "5 years", date_labels = "%Y") 
+  
+g2
+```
+
+c) Redo your chart from part b) using an index.
+```{r}
+metal_price3 = metal_price2 %>% group_by(key) %>% 
+  mutate(index = round(100*Price/Price[1],2)) %>%
+  ungroup()
+
+g3 = ggplot(metal_price3, aes(x = Date, y = index, col = key)) +
+  geom_line() +
+  ggtitle("Price of Metals in Time with Index") +
+  scale_x_date(date_breaks = "5 years", date_labels = "%Y") 
+  
+g3
+```
+
+
+d) Redo your chart from part b) using facets with a free y-scale. The facets should be lined up vertically so they share the same x-axis.
+
+```{r}
+g4 = ggplot(metal_price2, aes(Date, Price)) +
+  geom_line() +
+  ggtitle("Price of Metals in Time with Facets") +
+  scale_x_date(date_breaks = "5 years", date_labels = "%Y") +
+  facet_grid(key~., scales = "free_y")
+
+g4
+```
+e) Compare the results in b), c), and d).
+
+Obviously, the plot in b) is the worst because of the different y ranges. It is difficult to check the trends for some metals, and two of them overlapped because their prices are too low compared to nickel. The plots in c) and d) contains the similar information. We can compare the trends of the prices over time clearly in both plots. The d) plot looks simpler with the facets instead of multiple lines in one chart. But in c) plot, we can additionally compare which metal had a larger increase or decrease rate because they are put into an index. For example, we can find the increase and decrease of the price of uran is super large compared to the price of other metals, which is hard to detect in d).
+
+### 4. Crime trends
+
+a) Create a choropleth map of number of total major seven felony offenses in NYC by police precinct in 2021. You can find the data here:
+
+https://www1.nyc.gov/site/nypd/stats/crime-statistics/historical.page
+
+You can find the police precinct shape files here:
+
+https://data.cityofnewyork.us/Public-Safety/Police-Precincts/78dh-3ptz
+
+Label the precincts by number.
+
+
+```{r}
+data = readxl::read_xls("seven-major-felony-offenses-by-precinct-2000-2021.xls", skip = 2)
+data = data %>% fill(PCT)
+
+library(sf)
+shape = read_sf("C:/Users/73408/Desktop/5293/nypp_22a/nypp.shp")
+
+library(tmap)
+```
+
+```{r}
+names(data)[names(data) == 'PCT'] <- 'Precinct'
+data$Precinct = as.numeric(data$Precinct)
+data2 = left_join(shape,data) %>% filter(CRIME == "TOTAL SEVEN MAJOR FELONY OFFENSES")
+```
+
+```{r}
+tm_shape(data2) +
+  tm_polygons("2021", palette = "Reds") +
+  tm_text("Precinct", size = .5)
+```
+
+b) Describe spatial trends. (You can refer to the police precincts by number rather than borough / neighborhood.)
+
+We can find precincts 14, 40-52,75,and 109-110 have a large number of total major seven felony offenses. Staten island has a small number of total major seven felony offenses. Other than those, no specific spatial trend can be found.
+
+```{r}
+plot(y = data2$'2021', x = data2$Precinct)
+```
+
+c) Use faceting by five year intervals to show percent change over time in the seven major felony offenses. Your graph should have four facets. The facet for 2000-2005 should show the percent change in offenses from 2000 to 2005; the facet for 2005-2010 should should the percent change in offenses from 2005 to 2010, etc.
+
+```{r}
+data3 = data2 %>% mutate ('2000-2005' =  round((.$'2005' - .$'2000')/.$'2000',3),
+                          '2005-2010' =  round((.$'2010' - .$'2005')/.$'2005',3),
+                          '2010-2015' =  round((.$'2015' - .$'2010')/.$'2010',3),
+                          '2015-2020' =  round((.$'2020' - .$'2015')/.$'2015',3)) %>%
+  select(Precinct,'2000-2005','2005-2010','2010-2015','2015-2020') %>%
+  pivot_longer(cols = c('2000-2005','2005-2010','2010-2015','2015-2020'), names_to = "five_year")
+data3
+```
+
+```{r}
+tm_shape(data3) +
+  tm_polygons("value") +
+  tm_text("Precinct", size = .5) +
+  tm_facets(by = "five_year")
+```
+
+
+d) What trends do you observe?
+
+The overall trend is that the crime rate change increases along with years (shifts to positive in another word). From 2000 to 2005, the rate is most negative. From 2005 to 2010, the change is still most negative but closer to 0. From 2010 to 2015, there is a big increase in the change of the crime rate. We can find some relatively big positive values. From 2015 to 2020, the overall rate change get smaller, but still there are some positive values exist.
+
