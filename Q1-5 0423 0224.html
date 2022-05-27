@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<!-- saved from url=(0081)file:///D:/%E3%80%90CU%E3%80%912022%20Spring/5293_r/Pset5/Q1-5%200423%200141.html -->
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+    <title>Q1</title>
+    <script src="./Q1-5 0423 0224_files/d3.v7.js.下载">  </script>
+    <style>
+      * {
+        font-family: sans-serif;
+      }
+      text {
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <div>
+      <h3>Weather forecast for Columbia University 4/16/22</h3>
+      <p>Lat, Lon: 40.807793, -73.962144</p>
+      <input type="radio" name="tempscale" value="Fahrenheit" checked="true">Fahrenheit
+      <input type="radio" name="tempscale" value="Celsius">Celsius
+    </div>
+    <script type="text/javascript">
+	
+	//Width and height
+	var w = 700;
+    var h = 300;
+    var margin = {top: 25, right: 100, bottom: 50, left: 100};
+    var innerHeight = h - margin.top - margin.bottom;
+    var innerWidth = w - margin.left - margin.right;
+
+    d3.json("https://api.weather.gov/gridpoints/OKX/33,38/forecast").then(function(data) {
+    // filter for isDaytime equals "true"
+    var dataset = data.properties.periods.filter(d => d.isDaytime);
+    dataset.forEach(d => d.celsius = (d.temperature - 32) * 5/9);
+    var xScale = d3.scaleLinear()
+    .domain([d3.min(dataset.map(d => d.temperature))-5,d3.max(dataset.map(d => d.temperature))+5])
+    .range([0,innerWidth]);
+    var yScale = d3.scaleBand()
+    .domain(dataset.map(d => d.name))
+    .range([0,innerHeight]);
+    // ADD: create axis generators
+    var xAxis = d3.axisBottom()
+    .scale(xScale);
+    var yAxis = d3.axisLeft()
+    .scale(yScale);
+    var icon = d3.select("body")
+    .append("div")
+    .append("img")
+    .attr("src", "https://github.com/jtr13/d3book/blob/master/images/blank86x86.png?raw=true")
+    .style("padding-left", w/2 - 43 + "px");   
+    // ADD: create SVG element
+    var svg = d3.select("body")
+    .append("svg")
+    .attr("width", w)
+    .attr("height", h);
+    // ADD: create background rectangle
+    svg.append("rect")
+    .attr("x", 0)
+    .attr("y", 0)
+    .attr("width", w)
+    .attr("height", h)
+    .attr("fill", "aliceblue");
+    // create caption
+    d3.select("body")
+      .append("div")
+      .style("padding", "10px")
+      .append("a")
+      .attr("href", "https://www.weather.gov/documentation/services-web-api")
+      .text("Data source: https://www.weather.gov/documentation/services-web-api");
+    // ADD: create plot group 
+    var lines = svg.append("g")
+    .attr("transform", `translate (${margin.left}, ${margin.top})`)
+    .selectAll("line")
+    .data(dataset);
+    var dots = svg.append("g")
+    .attr("transform", `translate (${margin.left}, ${margin.top})`)
+    .selectAll("circle")
+    .data(dataset);    
+    // ADD: create grid lines
+    lines.enter().append('line')
+    .attr("x1",d => 0)
+    .attr("y1", d => yScale(d.name)) 
+    .attr("x2",d => innerWidth)
+    .attr("y2", d => yScale(d.name)) 
+    .attr("stroke", "lightgrey")
+    .attr("stroke-width", 1); 
+    // ADD: create circles
+    dots.enter()
+    .append("circle")
+    .attr("cx", d => xScale(d.temperature))
+    .attr("cy", d => yScale(d.name)) 
+    .attr("r",3)
+    .attr("fill", "black")
+    .attr("sf", d => d.shortForecast)
+    .on('mouseover', function(event, d){
+        svg.append("text")
+        .attr("class", "forecast")  
+        .attr("x",d3.select(this).attr("cx"))
+        .attr("y",d3.select(this).attr("cy"))
+        .attr("transform", `translate (${margin.left}, ${margin.top})`)
+        .text(d.shortForecast);
+        
+        icon.style("visibility", "visible")
+          .attr("src", d.icon);
+      })
+      .on("mouseout", function(){
+          d3.select("text.forecast").remove();
+          icon.style("visibility", "hidden");
+        });    
+    // ADD: create x-axis
+     svg.append("g")
+    .attr("class", "xAxis")
+    .attr("transform", `translate (${margin.left}, ${h - margin.bottom})`)
+    .call(xAxis);
+    // ADD: create x-axis label
+    svg.select("g.xAxis").append("text")
+    .attr("fill", "black")
+    .text("temperature (Fahrenheit)")
+    .attr("transform", `translate(${innerWidth/2}, 30)`);   
+    // ADD: create y-axis
+    svg.append("g")
+    .attr("class", "yAxis")
+    .attr("transform", `translate (${margin.left}, ${margin.top})`)
+    .call(yAxis);   
+    var tempscale = "Fahrenheit";  
+    d3.selectAll("input")
+    .on("click", function() {
+    tempscale = d3.select(this).node().value; 
+    if (tempscale == "Fahrenheit") {
+    xScale = d3.scaleLinear()
+    .domain([d3.min(dataset.map(d => d.temperature))-5,d3.max(dataset.map(d => d.temperature))+5])
+    .range([0,innerWidth]); 
+    xAxis = d3.axisBottom()
+    .scale(xScale);
+    // ADD: create circles
+    svg
+    .selectAll("circle")
+    .attr("cx", d => xScale(d.temperature))   
+    // ADD: create x-axis
+    svg.select("g.xAxis")
+    .call(xAxis);
+    // ADD: create x-axis label
+    svg.select("g.xAxis").select("text")
+    .text("temperature (Fahrenheit)");
+    } 
+    else 
+    {
+    xScale = d3.scaleLinear()
+    .domain([d3.min(dataset.map(d => d.celsius))-3,d3.max(dataset.map(d => d.celsius))+3])
+    .range([0,innerWidth]);
+    // ADD: create axis generators
+    xAxis = d3.axisBottom()
+    .scale(xScale);
+    // ADD: create circles
+    svg.selectAll("circle")
+    .attr("cx", d => xScale(d.celsius))
+    // ADD: create x-axis
+     svg.select("g.xAxis")
+    .call(xAxis);
+    // ADD: create x-axis label
+    svg.select("g.xAxis").select("text")
+    .text("temperature (Celsius)");
+    }
+    });   
+          
+  // all of your code that needs the live data goes here
+  })
+    .catch(function(error){
+        d3.select("body").append("h3").text("Error loading data.");
+    });
+      
+        
+    </script>
+  
+<div><img src="./Q1-5 0423 0224_files/sct" style="padding-left: 307px; visibility: hidden;"></div><svg width="700" height="300"><rect x="0" y="0" width="700" height="300" fill="aliceblue"></rect><g transform="translate (100, 25)"><line x1="0" y1="-1.4210854715202004e-14" x2="500" y2="-1.4210854715202004e-14" stroke="lightgrey" stroke-width="1"></line><line x1="0" y1="32.14285714285713" x2="500" y2="32.14285714285713" stroke="lightgrey" stroke-width="1"></line><line x1="0" y1="64.28571428571428" x2="500" y2="64.28571428571428" stroke="lightgrey" stroke-width="1"></line><line x1="0" y1="96.42857142857143" x2="500" y2="96.42857142857143" stroke="lightgrey" stroke-width="1"></line><line x1="0" y1="128.57142857142856" x2="500" y2="128.57142857142856" stroke="lightgrey" stroke-width="1"></line><line x1="0" y1="160.71428571428572" x2="500" y2="160.71428571428572" stroke="lightgrey" stroke-width="1"></line><line x1="0" y1="192.8571428571429" x2="500" y2="192.8571428571429" stroke="lightgrey" stroke-width="1"></line></g><g transform="translate (100, 25)"><circle cx="320.2247191011235" cy="-1.4210854715202004e-14" r="3" fill="black" sf="Partly Sunny"></circle><circle cx="348.3146067415731" cy="32.14285714285713" r="3" fill="black" sf="Partly Sunny"></circle><circle cx="320.2247191011235" cy="64.28571428571428" r="3" fill="black" sf="Mostly Cloudy"></circle><circle cx="320.2247191011235" cy="96.42857142857143" r="3" fill="black" sf="Chance Rain Showers then Light Rain Likely"></circle><circle cx="207.86516853932582" cy="128.57142857142856" r="3" fill="black" sf="Slight Chance Rain Showers then Mostly Sunny"></circle><circle cx="151.68539325842696" cy="160.71428571428572" r="3" fill="black" sf="Mostly Sunny"></circle><circle cx="264.04494382022466" cy="192.8571428571429" r="3" fill="black" sf="Mostly Sunny"></circle></g><g class="xAxis" transform="translate (100, 250)" fill="none" font-size="10" font-family="sans-serif" text-anchor="middle"><path class="domain" stroke="currentColor" d="M0,6V0H500V6"></path><text fill="black" transform="translate(250, 30)">temperature (Celsius)</text><g class="tick" opacity="1" transform="translate(11.235955056179735,0)"><line stroke="currentColor" y2="6"></line><text fill="currentColor" y="9" dy="0.71em">10</text></g><g class="tick" opacity="1" transform="translate(61.79775280898872,0)"><line stroke="currentColor" y2="6"></line><text fill="currentColor" y="9" dy="0.71em">11</text></g><g class="tick" opacity="1" transform="translate(112.3595505617977,0)"><line stroke="currentColor" y2="6"></line><text fill="currentColor" y="9" dy="0.71em">12</text></g><g class="tick" opacity="1" transform="translate(162.9213483146067,0)"><line stroke="currentColor" y2="6"></line><text fill="currentColor" y="9" dy="0.71em">13</text></g><g class="tick" opacity="1" transform="translate(213.48314606741567,0)"><line stroke="currentColor" y2="6"></line><text fill="currentColor" y="9" dy="0.71em">14</text></g><g class="tick" opacity="1" transform="translate(264.04494382022466,0)"><line stroke="currentColor" y2="6"></line><text fill="currentColor" y="9" dy="0.71em">15</text></g><g class="tick" opacity="1" transform="translate(314.6067415730336,0)"><line stroke="currentColor" y2="6"></line><text fill="currentColor" y="9" dy="0.71em">16</text></g><g class="tick" opacity="1" transform="translate(365.16853932584263,0)"><line stroke="currentColor" y2="6"></line><text fill="currentColor" y="9" dy="0.71em">17</text></g><g class="tick" opacity="1" transform="translate(415.73033707865164,0)"><line stroke="currentColor" y2="6"></line><text fill="currentColor" y="9" dy="0.71em">18</text></g><g class="tick" opacity="1" transform="translate(466.2921348314606,0)"><line stroke="currentColor" y2="6"></line><text fill="currentColor" y="9" dy="0.71em">19</text></g></g><g class="yAxis" transform="translate (100, 25)" fill="none" font-size="10" font-family="sans-serif" text-anchor="end"><path class="domain" stroke="currentColor" d="M-6,0H0V225H-6"></path><g class="tick" opacity="1" transform="translate(0,16.07142857142856)"><line stroke="currentColor" x2="-6"></line><text fill="currentColor" x="-9" dy="0.32em">Saturday</text></g><g class="tick" opacity="1" transform="translate(0,48.21428571428571)"><line stroke="currentColor" x2="-6"></line><text fill="currentColor" x="-9" dy="0.32em">Sunday</text></g><g class="tick" opacity="1" transform="translate(0,80.35714285714285)"><line stroke="currentColor" x2="-6"></line><text fill="currentColor" x="-9" dy="0.32em">Monday</text></g><g class="tick" opacity="1" transform="translate(0,112.5)"><line stroke="currentColor" x2="-6"></line><text fill="currentColor" x="-9" dy="0.32em">Tuesday</text></g><g class="tick" opacity="1" transform="translate(0,144.64285714285714)"><line stroke="currentColor" x2="-6"></line><text fill="currentColor" x="-9" dy="0.32em">Wednesday</text></g><g class="tick" opacity="1" transform="translate(0,176.7857142857143)"><line stroke="currentColor" x2="-6"></line><text fill="currentColor" x="-9" dy="0.32em">Thursday</text></g><g class="tick" opacity="1" transform="translate(0,208.92857142857147)"><line stroke="currentColor" x2="-6"></line><text fill="currentColor" x="-9" dy="0.32em">Friday</text></g></g></svg><div style="padding: 10px;"><a href="https://www.weather.gov/documentation/services-web-api">Data source: https://www.weather.gov/documentation/services-web-api</a></div></body></html>
