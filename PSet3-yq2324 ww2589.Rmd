@@ -1,0 +1,575 @@
+---
+title: "Problem Set 3 Spring 2022"
+author: yq2324, ww2589
+date: 
+output: html_document
+---
+
+```{r setup, include=FALSE}
+# this prevents package loading message from appearing in the rendered version of your problem set 
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+```
+
+Notes:
+
+Grading is based both on your graphs and verbal explanations. Follow all best practices as discussed in class, including choosing appropriate parameters for all graphs. Do not expect the assignment questions to spell out precisely how the graphs should be drawn. Sometimes guidance will be provided, but the absense of guidance does not mean that all choices are ok.
+
+Read *Graphical Data Analysis with R*, Ch. 6, 7
+
+**NEW**: We are moving in the direction of reproducible workflows. Test that your code runs for both members of the group without making any changes. That means that you should not have `setwd()` in your code, but rather, use the same relative paths to the data.
+
+
+a) Retrieve the appropriate data by reproducing the query shown in `PSet3Q1request_form.pdf`. Display the first five rows.
+```{r}
+getwd()
+library(tidyverse)
+df1<- read_tsv("Q1.txt",  show_col_types = F)
+head(df1, 5)
+```
+
+**The first 5 rows are shown above.**
+
+
+b) Determine the eight `Cause of death Code` values with the highest number of deaths in 2020. Find the number of deaths for each of these eight codes by state, and then determine the *death rate* (deaths per 100000) for each. Display the death rates for these eight codes for New York State.
+```{r}
+library(tidyverse)
+df1 <- df1 %>% 
+  filter(is.na(Notes)) %>% 
+  dplyr::select(-Notes) 
+
+df1 %>% 
+  group_by(`Cause of death Code`) %>%
+  summarize(total_death = sum(Deaths)) %>%
+  arrange(desc(total_death)) %>%
+  mutate(death_rate = total_death/100000) %>%
+  head(8) 
+```
+
+**The number of deaths for each of the 5 codes are in the total_death column, and the death rates are shown in death_rate column.**
+
+
+```{r}
+df1 %>%
+  filter(State == "New York",
+         `Cause of death Code` %in% c("U07.1",	"I25.1",	"C34.9",	"G30.9",	"J44.9",	"F03", "I21.9",	"I25.0")) %>%
+  group_by(State, `Cause of death Code`) %>%
+  summarize(total_death = sum(Deaths)) %>%
+  mutate(death_rate = total_death/100000)
+```
+
+**The death rate of the eight codes in New York is shown in the death_rate column.**
+
+
+c) Create a static parallel coordinates plot using `GGally::ggparcoord()` showing state death rate patterns for these eight codes for all fifty states. Your graph should have one line for each state and the codes should be the axes of the graph. Include a conversation chart below displaying the `Cause of death` for each of the eight `Cause of death Code` values since they're too long to fit in the plot. Apply alpha blending, splines, and rescaling to create the clearest version of the plot that you can. Discuss outliers, clusters, and correlations in detail.
+```{r}
+#install.packages("GGally")
+library(GGally)  
+
+df2<- df1 %>%
+  filter(`Cause of death Code` %in% c("U07.1",	"I25.1",	"C34.9",	"G30.9",	"J44.9",	"F03", "I21.9",	"I25.0"))%>%
+  dplyr::select(State, `Cause of death Code`, Deaths) %>%
+  pivot_wider(names_from = `Cause of death Code`, values_from = Deaths) 
+
+
+ggparcoord(df2, columns = 2:9, scale = "center", alphaLines = .5, splineFactor = 10, groupColumn = 1) +
+  theme(legend.title = element_text(size = 5), 
+               legend.text = element_text(size = 5)) + #theme(legend.position = "none") 
+  labs(title = "Static parrallel ocoordinates plot of cause of death code in each state",
+       x = "Cause of deat code",
+       y = "Death rate") 
+```
+
+**Conversion table:**
+```{r}
+df1 %>%
+  filter(`Cause of death Code` %in% c("U07.1",	"I25.1",	"C34.9",	"G30.9",	"J44.9",	"F03", "I21.9",	"I25.0"))%>%
+  distinct(`Cause of death Code`, `Cause of death`) %>%
+  dplyr::select(`Cause of death Code`, `Cause of death`)
+```
+
+**Outliers:**
+
+We can see from the plot that the orange line on the top is clearly an outlier, which should be California according to the labels. The G30.9	death (Alzheimer disease, unspecified) , I21.9 (Acute myocardial infarction, unspecified) and I25.0	(Atherosclerotic cardiovascular disease, so described) in this state is much higher than other states. The pink line (Utah), blue line (New York), yellow-green line (Georgia) could also be regarded as outliers due to the same reason.
+
+**Clusters:**
+
+There are several states gathering at the bottom of the plot, which could be regarded as clusters as they are clearly sharing similar death rate among all the death codes. The pink lines (Wyoming, Wisconsin, West Virginia, etc.) could be perfect examples.
+
+
+**Correlations:**
+It is hard to tell about the correlations between different variables, because the patterns of different observations are so different.
+
+
+d) Classify the states into two categories by the party of the candidate who won the state in the 2020 presidential election: Democrat ("blue state") or Republican ("red state"). You can find the data online, for example on this web site: https://www.cookpolitical.com/2020-national-popular-vote-tracker
+
+```{r}
+#library(data.table)
+DorR <- read_csv("https://docs.google.com/spreadsheets/d/e/2PACX-1vS3Z8Rq9xqOLISwoKdK0n6CFLBuPSCoXbbLeY8vhi-rzFS3ZFNEtR0BCdEbHcS-2Tlh5aPcnZbwBLao/pub?output=csv")
+
+partyinfo<- DorR %>%
+  dplyr::select(state, called) %>%
+  mutate(State = state)
+
+
+df3<- 
+  dplyr::left_join(df1, partyinfo, by = "State") %>%
+  mutate(party = factor(called, levels = c("D", "R"))) %>%
+    dplyr::select(-state, -called) 
+```
+
+Create an interactive parallel coordinates plot of the same data as in part c), coloring by state "color": red vs. blue. Discuss any new observations that weren't apparent in the previous plot.
+```{r}
+# devtools::install_github("timelyportfolio/parcoords")  
+library(parcoords)  
+#install.packages("d3r")
+library(d3r)
+m<- df3 %>%
+  filter(`Cause of death Code` %in% c("U07.1",	"I25.1",	"C34.9",	"G30.9",	"J44.9",	"F03", "I21.9",	"I25.0"))%>%
+  dplyr::select(State, `Cause of death Code`, Deaths, party) %>%
+  mutate(party = factor(party, levels = c("D", "R"))) %>%
+  pivot_wider(names_from = `Cause of death Code`, values_from = Deaths) %>%
+  parcoords(rownames = F
+             , brushMode = "1D-axes"  
+             , reorderable = T  
+             , queue = T 
+             , color = list(  
+               colorBy = "party"  
+               ,colorScale = "scaleOrdinal"  
+               ,colorScheme = c("red", "blue")
+               )  
+             , withD3 = TRUE 
+             )  
+m
+```
+
+**New observations:**
+
+Now we can be sure what the outliers are. The one that is high in G30.9, I21.9, I25.0, J44.9 is clearly the blue state California, and the other three outliers discuessed in c) are New York, Texas and Georgia. The party of the states do not have a major influence on the death rate of different causes of death, because the blue and red lines are equally distributed among the plot.
+
+Also, the clustering patterns can be observed more clearly with the interactive plot. For example, Rhode Island and Hawaii are nearly sharing the same death rate data. After filtering C34.9, F03, G30.9, I21.9, I25.9 and I25.0, their blue lines almost coincide with eath other. 
+
+
+### 2. External causes of death
+
+For the following problems, we will study the underlying cause of death with regard to age, gender, and race.
+
+a) Modify your query to retrieve data that contains categories of age, gender, and race for each cause of death in 2020 by reproducing the query shown in `PSet3Q2request_form.pdf`. Remove the rows and columns associated with the metadata (`Notes` column and rows which contained notes.) Display total deaths by `Gender`.
+```{r}
+df<- read_tsv("Q2.txt", show_col_types = F)
+df <- df %>% 
+  filter(is.na(Notes)) %>% 
+  dplyr::select(-Notes) 
+
+df %>% 
+  group_by(Gender) %>%
+  summarize(total_death = sum(Deaths))
+```
+
+**The total deaths by gender is shown in the total_death column.**
+
+
+b) For this question, we will focus on **external causes of morbidity and mortality**, indicated by `Cause of death Code` starting with V, W, X, and Y. These are the subchapters of the larger category (or "chapter"). Transform your data as follows:
+
+* Create a new column containing the first letter of the `Cause of death Code`.
+
+* Filter for V, W, X and Y. 
+
+* Add a column with a more descriptive, yet short, name for these subchapters. See: https://www.outsourcestrategies.com/blog/why-how-use-icd10-external-causes-codes.html for help.   
+
+* Remove the following since the numbers are very small: age groups `< 1 year`, `1-4 years`, `5-14 years` and `Not Stated` and racial group `American Indian or Alaska Native`. 
+
+* Shorten the race labels to `Asian`, `Black`, `White`. 
+
+Display the breakdown of deaths by subchapter using the descriptive name.
+
+*For parts c) and e), treat subchapter as the dependent variable.*
+```{r}
+library("stringr")  
+names(df)
+
+df<- df %>%
+  mutate(code = str_sub(`Cause of death Code`, start = 1, end = 1)) %>%
+  filter(code %in% c("V", "W", "X", "Y")) %>%  
+  mutate(subchapter = case_when(code == "V"~ "External Causes of Injury for Transport Accidents",
+                                code == "W"~ "Injuries Due to Falls and Exposure",
+                                code == "X"~ "Injuries Due to Self-Harm, Assault, or Undetermined Intent",
+                                code == "Y"~ "Legal, Military, and Medical Causes and Supplementary Factors"
+                                )) %>%
+  filter(!`Ten-Year Age Groups` %in% c("< 1 year", "1-4 years", "5-14 years", "Not Stated"),
+         Race != "American Indian or Alaska Native") %>%
+  mutate(Race_short = str_sub(Race, start = 1, end = 5)) 
+head(df, 3)
+
+```
+
+**"code" column is the the first letter of "Cause of death Code"; "subchapter" column is the descriptive names of the subchapters; "Race_short" column is the shorten race labels.**
+
+
+
+```{r}
+dfb<- df %>%
+  group_by(subchapter) %>%
+  summarize(total_death = sum(Deaths)) 
+dfb
+```
+
+```{r}
+#install.packages("treemap")
+library(treemap)
+treemap::treemap(dfb,
+                 index=c("subchapter"),
+                 vSize="total_death",
+                 vColor="total_death",
+                 type="value",
+                 title="Breakdown of deaths by subchapter",  
+                 format.legend = list(scientific = FALSE, big.mark = " ")) 
+```
+
+**Breakdown:** The breakdown is shown in the dataframe and the tree plot.
+
+c) Create mosaic plots that show the association between race and subchapter, gender and subchapter, and age and subchapter. You can either create three separate graphs or one `pairs()` plot. Which variable appears to have the strongest association with subchapter?
+
+Coding tips:
+
+A warning that none of the common methods for combining multiple plots such as `par(mfrow = ...)`, `grid.arrange()` etc. work for `mosaic()` so don't head down that route.
+
+For `pairs()` to work with mosaic plots, `library(vcd)` needs to be loaded and the data must be in table form (use `xtabs()` to convert).
+```{r fig.width = 15, fig.height = 5} 
+#icecreamcolors <- c("cornflowerblue", "#ff99ff") #, "#cc9966")
+library(grid) # needed for gpar
+library(vcd)
+library(ggmosaic)
+
+df1<- df %>% 
+  mutate(Age = `Ten-Year Age Groups`)  
+
+race<- data.frame(xtabs(Deaths ~ Race_short + subchapter, df1))
+#race<- data.frame(race)
+g1<- race %>%
+  ggplot() +
+  geom_mosaic(aes(weight = Freq, x = product(Race_short), fill = subchapter))+
+  labs(title = "Mosaic plot of Race vs. subchapter",
+       x = "Race", y = "Subchapter")
+
+gender<- data.frame(xtabs(Deaths ~ Gender + subchapter, df1))
+g2<- gender %>%
+  ggplot() +
+  geom_mosaic(aes(weight = Freq, x = product(Gender), fill = subchapter)) +
+    labs(title = "Mosaic plot of Gender vs. subchapter",
+       x = "Gender", y = "Subchapter")
+
+
+
+age<- data.frame(xtabs(Deaths ~ Age + subchapter, df1))
+g3<- age %>%
+  ggplot() +
+  geom_mosaic(aes(weight = Freq, x = product(Age), fill = subchapter))  +
+  #theme(axis.text.x = element_text(angle = 60, vjust = 0.5, hjust=1)) +
+  labs(title = "Mosaic plot of Age vs. subchapter",
+       x = "Age", y = "Subchapter")
+
+g1
+g2
+g3
+
+```
+
+
+
+**Strongest association:**
+
+Age has the strongest association with subchapter, because the proportion of different Cause of death codes change the most according to different age groups.
+
+d) Use chi-square tests to test the relationships from part c). Do the results support what you found in the mosaic plots?
+
+Coding tip: 
+
+The data must be in table, not counts, form. Use `xtabs()` to convert. 
+```{r}
+r<- chisq.test(xtabs(Deaths ~ Race_short + subchapter, df1), correct = FALSE)
+#X$observed
+#X$expected
+r
+
+g<- chisq.test(xtabs(Deaths ~ Gender + subchapter, df1), correct = FALSE)
+g
+
+a<- chisq.test(xtabs(Deaths ~ Age + subchapter, df1), correct = FALSE)
+a
+```
+
+Null hypothesis: the two variables tested are independent;
+Alternative hypothesis: the two variables tested are not independent.
+
+The p-values of the three chi-square tests are all very low, which means we should reject the three hypothesis, meaning that age, gender and race are all dependent to subchapter. However, the chi-square value of age is the highest among all three variables, meaning that age is the most relative to subchapter. 
+
+**This result totally supports the mosaic plots from c).**
+
+
+
+e) Create a mosaic plot that best shows the relationship between subchapter, race, age, and gender. What patterns do you observe that were not visible when you only consider two variables at a time? (Given that the racial groups are very different sizes, you may want to make a separate mosaic plot for each racial group.)
+
+**Method 1**
+
+```{r fig.width = 10, fig.height = 7}
+library(RColorBrewer)
+fillcolors <- brewer.pal(4, "Set2") #Blues")
+
+dfe<- df1 %>%
+  dplyr::select(code, Gender, Race_short, Age, Deaths) %>%
+  #group_by(Age, Gender, Race_short) %>%
+  group_by(Race_short, Gender, Age) %>%
+  mutate(Freq = n())  %>% 
+  mutate(Freq = Freq/sum(Freq)) %>% ungroup()
+  
+legend_title <- "Codes for subchapter"
+
+dfe %>%
+  ggplot(aes(x = Age, y = Freq, fill = code)) +
+  geom_col() +
+ # geom_bar(position = "fill", stat = "summary", fun.y = "mean")+
+  facet_grid(Gender~ Race_short) +
+  theme(axis.text.x = element_text(angle = 30, vjust = 0.5, hjust=1)) +
+  scale_fill_manual(legend_title, values = fillcolors) +
+  labs(title = "", 
+       x = "Age",
+       y = "a")
+  #scale_fill_manual(values = fillcolors) 
+  #theme_classic()
+
+
+```
+
+**Conversion chart:**
+
+```{r}
+tibble("v" = "External Causes of Injury for Transport Accidents"
+      , "W" = "Injuries Due to Falls and Exposure"
+      , "X" = "Injuries Due to Self-Harm, Assault, or Undetermined Intent"
+      , "Y" = "Legal, Military, and Medical Causes and Supplementary Factors")
+```
+
+**Method 2**
+
+```{r}
+#fig.width = 50, fig.height = 20} 
+vcd::mosaic(code ~ Gender + Race_short, 
+       direction = c("v", "h", "h"), 
+       df1, 
+       highlighting_fill = c("grey", "cornflowerblue", "#ff99ff"))
+```
+
+```{r}
+vcd::mosaic(code ~ Age + Race_short, 
+       direction = c("v", "h", "h"), 
+       df1, 
+       highlighting_fill = c("grey", "cornflowerblue", "#ff99ff"))
+```
+
+**Conversion chart:**
+
+```{r}
+tibble("v" = "External Causes of Injury for Transport Accidents"
+      , "W" = "Injuries Due to Falls and Exposure"
+      , "X" = "Injuries Due to Self-Harm, Assault, or Undetermined Intent"
+      , "Y" = "Legal, Military, and Medical Causes and Supplementary Factors")
+```
+
+
+**New observations:**
+
+To clearly see the relationship between the four variables, we tried 2 methods to make the mosaic plot. 
+
+- Method 1:
+
+Uses geom_mosaic and produces 1 big plot that contains all 4 variables. The advantage is that it clearly shows the pattern of change in death reasons among different age groups, races and genders. For example, for all 3 races both male and female, the number of people dying due to "External Causes of Injury for Transport Accidents" (code V) decrease as the age group increase. Also, the number of people dying due to "Injuries Due to Falls and Exposure" (code W) and "Legal, Military, and Medical Causes and Supplementary Factors" (code Y) both increase as the age group increase. 
+
+However, the disadvantage of this method is that it couldn't show the different number of people among different races, so it cannot tell a lot about the relationship between race and other variables. 
+
+
+- Method 2:
+
+Uses vcd::mosaic and produces 2 separate plots separating race-age and race-gender. The area of each square in the two plots can clearly show the number of different people dying due to different reasons. For example, Asian female dying from "Injuries Due to Self-Harm, Assault, or Undetermined Intent" (code X) is much less than white female dying from the same reason, which is not shown in the 2-variable plot in part c).
+
+The disvantage of this method is that it doesn't show the change of pattern as clearly as method 1.
+
+
+
+
+### 3. Community districts
+
+For this question we'll use a subset of data from a survey on NYC attitudes toward various quality of life issues. The data is provided in a file called "CBDBManhattan.csv". The original source of the data is: https://cbcny.org/sites/default/files/media/files/Manhattan%20Community%20District%20Results.pdf
+
+We will work only with the `Non-safety QoL` indicators so remove data relating to other indicator types.
+
+a) Draw a biplot of the results of a PCA analysis. In the biplot, the vectors should be the indicators and the points the community districts. You will need to transform the data to get it in the right form for this plot. To do so, use `pivot_longer()` and `pivot_wider()`. 
+```{r}
+#install.packages(redav)
+library(tidyverse)
+library(tidyr)
+nyc <- read.csv("ManhattanCDResults.csv")
+head(nyc)
+data <- nyc %>%
+  filter(Type == "Non-safety QoL")%>% 
+  mutate(cd1 = as.numeric(substr(cd1,1,5)))%>% 
+  mutate(cd2 = as.numeric(substr(cd2,1,5)))%>% 
+  mutate(cd3 = as.numeric(substr(cd3,1,5)))%>% 
+  mutate(cd4 = as.numeric(substr(cd4,1,5)))%>% 
+  mutate(cd5 = as.numeric(substr(cd5,1,5)))%>% 
+  mutate(cd6 = as.numeric(substr(cd6,1,5))) %>% 
+  mutate(cd7 = as.numeric(substr(cd7,1,5)))%>% 
+  mutate(cd8 = as.numeric(substr(cd8,1,5)))%>% 
+  mutate(cd9 = as.numeric(substr(cd9,1,5)))%>% 
+  mutate(cd10 = as.numeric(substr(cd10,1,5)))%>% 
+  mutate(cd11 = as.numeric(substr(cd11,1,5)))%>% 
+  mutate(cd12 = as.numeric(substr(cd12,1,5)))
+data
+
+data_1reform <- pivot_longer(data, 3:14)
+data_2reform <- pivot_wider(data_1reform, names_from = Indicator, values_from = value)
+newdata <- data_2reform[,3:11]
+row.names(newdata) <- c(names(data)[3:14])
+newdata
+
+pca <- prcomp(newdata, scale. = TRUE)
+#install.packages("devtools")
+devtools::install_github("jtr13/redav")
+library(redav)
+draw_biplot(newdata, scale = TRUE)
+
+```
+
+
+For parts b) and c), answer based on your biplot from part a).
+
+b) Indicators
+
+* Which indicator is the most uncorrelated with `Availability of health care services`?
+
+  **Traffic**
+
+* Which indicator is most positively correlated with `Control of street noise`?
+
+  **Rat Control**
+
+* Which indicator is most negatively correlated with `Rat control`?
+
+  **Neibourhood Parks**
+
+c) Clusters
+
+* What clusters do you observe? 
+
+  **I observed 5 clusters. 1,2,and 8 are cluster one, 5 and 6 are cluster two, 4 is cluster three, 7 is cluster four, and 3, 9, 10, 11, 12 forms cluster five.**
+  
+* Are the districts in each cluster located near each other geographically? 
+
+  **Districts 1 and 2 in cluster one are close to each other geographically. Districts 5 and 6 in cluster two are close to each other geographically. Districts 9, 10, 11, and 12 are connected to each other geographically.**
+  
+* Which district(s) if any are outliers? 
+
+  **District 7 is the outlier.**
+  
+* Which district would you choose to live in based on the biplot?
+
+  **I would choose to live in district 4 because people care about air quality the most for this district and I know how bad air quality can have impact on people's live since I am from China and experience the time that China had bad air quality.**
+  
+d) `Traffic`
+
+Draw another biplot of the data in which the `Traffic` variable is calibrated. 
+```{r}
+draw_biplot(newdata, "Traffic")
+```
+
+
+* What is the order of the projected points from lowest to highest along this dimension? 
+
+  **6, 5, 8, 1, 2, 12, 3, 4, 11, 9, 10, 7**
+  
+* How does this order compare to the true order found in the original data?
+
+  **The order we got from original data from lowest to highst is 1, 5, 8, 6, 3, 2, 12, 9, 11, 4, 10, 7. Compared with the projected points, both data has district 10 and 7 as their two highest points and district 5, 8, and 11 stay on the same order and position in both data. However, the rest of the orders are quite different in two dataset**
+
+
+  
+### 4. Alaska fire risk
+
+The file `akff_download.csv` contains information about fire and fuel related indices for regions in Alaska during the last 10 days of Sep. 2021. More information about this data can be found here: https://akff.mesowest.org/about/.
+
+[This chart](https://fire.ak.blm.gov/content/weather/images/Fuels%20Page/CFFDRS%20Index%20Thresholds.jpg) provides a fire risk level associated with different variables such as temperature, fine fuel moisture code, etc.
+
+a) Create an alluvial diagram that shows the CFFDRS fire level movement over time for all the regions in Alaska included in the data file. Assume that on any given day in any region, the risk level is the *highest* of associated risk levels for the different variables. Each alluvium should represent a single region and should be clearly labeled. 
+
+```{r}
+#install.packages("ggalluvial")
+library(ggalluvial)
+
+alaska <- read.csv("akff_download.csv")
+
+AK1<- alaska %>%
+  select(-c(HR, ATF, WSM, PREC, DSR, CDSR)) %>%
+  mutate(RHP = cut(RHP, c(0, 21, 31, 41, 51, 100), labels = c( "LOW", "MOD", "HIGH", "VHIGH", "EXT"), right = TRUE),
+         FFMC = cut(FFMC, c(0, 79.9, 85.9, 88.9, 91.9, max(FFMC, na.rm = TRUE) ), labels = c("LOW", "MOD", "HIGH", "VHIGH", "EXT"), right = TRUE),
+         DMC = cut(DMC, c(0, 39.9, 59.9, 79.9, 99.9, max(c(DMC, 100), na.rm = TRUE)), labels = c("LOW", "MOD", "HIGH", "VHIGH", "EXT"), right = TRUE),
+         DC = cut(DC, c(0, 149.9, 349.9, 399.9, 449.9, max(c(DC,450), na.rm = TRUE) ), labels = c("LOW", "MOD", "HIGH", "VHIGH", "EXT"), right = TRUE),
+         ISI = cut(ISI, c(0, 1.9, 4.9, 7.9, 10.9, max(c(ISI, 11), na.rm = TRUE) ), labels = c("LOW", "MOD", "HIGH", "VHIGH", "EXT"), right = TRUE),
+          BUI = cut(BUI, c(0, 39.9, 59.9, 89.9, 109.9, max(c(BUI, 110), na.rm = TRUE) ), labels = c("LOW", "MOD", "HIGH", "VHIGH", "EXT"), right = TRUE),
+         FWI = cut(FWI, c(0,  8.9, 17.9, 27.9, 34.9, max(c(FWI, 35), na.rm = TRUE) ), labels = c("LOW", "MOD", "HIGH", "VHIGH", "EXT"), right = TRUE)
+         ) %>%
+  pivot_longer(cols = c(RHP, FFMC, DMC, DC, ISI, BUI, FWI), values_to = "levels") %>%
+  group_by(NAME, DATE) %>%
+  arrange(desc(levels)) %>%
+  mutate(pick = row_number()) %>% filter((pick) == 1) %>%
+  select(NAME, DATE, levels) %>%
+  ungroup() %>%
+  na.omit()
+
+g1<- ggplot(AK1, mapping = aes(x = DATE, y = 1,stratum = levels, alluvium  = NAME)) +
+  geom_alluvium(aes(fill = NAME), color = "grey40") + 
+  geom_stratum(width = 0.5) + 
+  geom_text(stat = "stratum", aes(label = after_stat(stratum)), size = 1.5) +
+  scale_y_reverse(breaks = NULL) +
+  labs(title = "Alluvial diagram of the CFFDRS fire level movement over time in Alaska",
+       y = "CFFDRS fire levels",
+       x = "Time",
+       fill = "Regions")
+g1
+```
+
+
+
+b) Create a heatmap of the same data.
+
+
+```{r}
+fillcolors <- brewer.pal(4, "Blues")
+
+AK1 %>%
+  na.omit() %>%
+  ggplot(aes(x = DATE, y = NAME, fill = levels)) +
+  geom_tile(color = "white")  +
+  scale_fill_manual( values = fillcolors) +
+  labs(title = "Heatmap of the CFFDRS fire level movement over time in Alaska",
+       y = "Regions",
+       x = "Time",
+       fill = "Regions")
+
+```
+
+
+
+c) What are the advantages and disadvantages of each? Which do you think is more effective?
+
+**Alluvial diagram:**
+
+The advantage is that it clearly shows how the fire levels of each region changes along with time. For example, Willow is apparently experiencing higher and higher level of fire from 9/23 to 9/30, and Egal River is always experience high level of fire during the whole time period.
+
+The disadvantage is that people who value patterns and prefer to rely on intuitions might overlook some details when reading this plot. For example, intuitively I would regard the fire level in Willow from 9/28 to 9/30 to be remaining the same level as the alluvial of it is vertical during that time period. But when I look at the labels of the stratum carefully I would realize that the fire level in 9/28 is "high" while in 9/30 is "very high". 
+
+**Heatmap:**
+
+The advantage is that this plot clearly shows the gathering pattern of fires in terms of time. As we can see nearly all the squares between 9/23 and 9/28 are dark blue, which means that nearly all regions are having extreme fire levels during those days. Also most of the squares from 9/28 to 9/30 are lighter blue, meaning that the fires get smaller during those days.
+
+The disadvantage is that the changing pattern of fire levels in terms of regions is not as apparent as the alluvial diagram. The change of colors of the small squares are not intuitive enough comparing to colored alluvial, so it is harder to perceive the fire trends of each region than that of alluvial plot.
+
+
