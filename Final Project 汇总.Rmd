@@ -1,0 +1,1090 @@
+---
+title: "Final Project_all"
+author: "Weijia Wang ww2589"
+date: "2022/5/27"
+output: html_document
+---
+
+# Data sources
+
+Together, we searched Hawaii Tourism public data on Google and found a tourism data warehouse that enables us to customize and download data sets about Hawaii’s tourism industry in difference perspectives.
+
+By inputting different filters and get different outputs from the warehouse, we found data about visitor arrival, length of stay, their places of departure, destination islands and purposes of travelling from Jan 1990 to Dec 2021. For example, for the data describing the number of visitors from different states to different islands, we can do:
+
+```{r}
+knitr::include_graphics("data1 pic.png")
+knitr::include_graphics("data2 pic.png")
+```
+
+We downloaded 5 datasets in total. Dataset1 mainly includes the number of visitor arrivaled, length of stay, total expenditure within the period they stay in Hawaii, etc. Dataset2 has only one attribute that is different to dataset1, which is the state that visitors come from. Dataset3 also adds an attribute to dataset2 which is number of visitors that go to each island of Hawaii. Dataset4 contains average age of visitors, their purpose to come to Hawaii and their accomodation choices. All of the variables are contineous variables. Data1 has 1200 observations, data2 has 6000 observations, data2.1 has 21000 observations and data4 has 4320 observations.
+
+There are two major problems about the data. Firstly, when it comes to the number of visitors choosing different accomodation and going to Hawaii for different purposes, there could be some overlaps between different categories. The way we dealt with this problem was to reallocate the categories and assign some small categories into a new category "others". The second problem was the missing value problem. We found out that the data from 1999 to 2018 are partially missing in different dimensions, as well as the data in 2020 and 2021 due to time delay. Therefore, we decided to use the data in 2019 when analysing the first two problems, as it could be representative to most of the years (without the impact of the pandemic).
+
+```{r setup, include=FALSE, message = FALSE, warning = FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+```
+
+```{r}
+data1.0 <- read.csv("1 visitor trend-不分state.csv")[-c(7:11),]
+data2.0 <- read.csv("2 visitor trend-分state.csv")[-c(301:305),]
+data2.10<- read.csv("2.1 visitor trend- state plus dest.csv")[-c(1051:1054),]
+data3.0 <- read.csv("3 destination.csv")[-c(29:32),]
+data4.0 <- read.csv("4 Q2主要数据.csv")[-c(217:221),]
+```
+
+Here we demonstrate the first 3 rows of data4 to provide a more intuitive understanding of what our datasets look like:
+```{r}
+head(data4.0, n=3)
+```
+
+
+
+
+
+
+# Data transformation
+
+"Describe the process of getting the data into a form in which you could work with it in R. If your code does not lend itself to being including in the .Rmd  file, provide a link to the folder or file(s) that contain(s) that code."
+
+```{r}
+# possible better format
+data1.0 = read.csv("data/raw/1 visitor trend-notbystate.csv")
+data2.0 = read.csv("data/raw/2 visitor trend-bystate.csv")
+data3.0 = read.csv("data/raw/3 destination.csv")
+data4.0 = read.csv("data/raw/4 Q2 main data.csv")
+
+#跑完所有预处理最后加上
+write.csv(d1,"data/clean/d1.csv", row.names = FALSE)
+#....
+#下次直接read.csv("data/clean/d1.csv")
+```
+
+To tidy our data, firstly we chose to convert all the blank observations into NAs using a helper function "empty_as_na". Then, we deleted redundant characters in the names of columns, for instance, all the "X"s in front of the years like "X2019". As there are a lot of missing values through the years, we may especially concern about the data since 2019 when analyzing the first two problems. We kept the data in year 2019 using "filter" command in tidyverse package. Our code is shown below
+
+????????????????? how "provide a link to the folder or file(s) that contain(s) that code"
+
+
+library(tidyverse)
+library(dplyr)
+
+empty_as_na <- function(x){
+    if("factor" %in% class(x)) x <- as.character(x) ## since ifelse wont work with factors
+    #ifelse(as.character(x)!="", x, NA)
+    ifelse(x!="", x, NA)
+}
+
+
+data1<- data1.0 %>% 
+  mutate_each(funs(empty_as_na)) %>%
+  pivot_longer(cols = -c("Market", "Indicator", "Units", "Destination"),
+               names_to = "Year",
+               values_to = "number")  %>%
+  mutate(Year = substr(Year, 2, 1000)) %>%
+  pivot_wider(names_from = "Year",
+              values_from = "number")
+
+data2<- data2.0 %>% 
+  mutate_each(funs(empty_as_na)) %>%
+  pivot_longer(cols = -c("Market", "Indicator", "Units", "Destination"),
+               names_to = "Year",
+               values_to = "number")  %>%
+  mutate(Year = substr(Year, 2, 1000)) %>%
+  pivot_wider(names_from = "Year",
+              values_from = "number")
+
+data2.1<- data2.10 %>% 
+  mutate_each(funs(empty_as_na)) %>%
+  pivot_longer(cols = -c("Market", "Indicator", "Units", "Destination"),
+               names_to = "Year",
+               values_to = "number")  %>%
+  mutate(Year = substr(Year, 2, 1000)) %>%
+  pivot_wider(names_from = "Year",
+              values_from = "number")
+
+
+data3<- data3.0 %>% 
+  mutate_each(funs(empty_as_na)) %>%
+  pivot_longer(cols = -c("Market", "Indicator", "Units", "Destination"),
+               names_to = "Year",
+               values_to = "number")  %>%
+  mutate(Year = substr(Year, 2, 1000)) %>%
+  pivot_wider(names_from = "Year",
+              values_from = "number")
+
+
+data4<- data4.0 %>%
+  pivot_longer(cols = -c("Group", "Indicator", "Units"),
+               names_to = "Year",
+               values_to = "number")  %>%
+  mutate(Year = substr(Year, 2, 1000)) %>%
+  pivot_wider(names_from = "Year",
+              values_from = "number")
+
+d1<- tibble(data1[,-c(5:21)][,-c(3)][,c(1,2,3,8)])
+d2<- tibble(data2[,-c(5:21)]) 
+d2.1<- tibble(data2.1)[,-c(5:21)][,c(1,2,3,4,8)]
+d4<- tibble(data4.0[,-c(4:19)][,c(1, 2, 8)])
+<<<<<<< HEAD
+=======
+```
+
+
+
+
+>>>>>>> d2a1f36452af6a65a3313b7839ff2a58d22181e9
+
+
+
+#```{r setup, include=FALSE, message = FALSE, warning = FALSE}
+#knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+#```
+
+# Missing values
+
+In this chapter, we discuss the pattern of missing values in our datasets. After carefully observing our data, we found out that data1, data2, data2.1, data3 do not have a lot of missing data. Even though they do, the missing pattern is pretty neat. Take data3 as an example, all the data from 1990 to 1997 are missing for indicators except from visitor arrivals. Therefore, we applied a heatmap for each of these datasets to show the missing patterns of the four datasets:
+
+```{r}
+# from chapter 2&3
+data1.0 <- read.csv("1 visitor trend-不分state.csv")[-c(7:11),]
+data2.0 <- read.csv("2 visitor trend-分state.csv")[-c(301:305),]
+data2.10<- read.csv("2.1 visitor trend- state plus dest.csv")[-c(1051:1054),]
+data3.0 <- read.csv("3 destination.csv")[-c(29:32),]
+data4.0 <- read.csv("4 Q2主要数据.csv")[-c(217:221),]
+
+library(tidyverse)
+library(dplyr)
+
+empty_as_na <- function(x){
+    if("factor" %in% class(x)) x <- as.character(x) ## since ifelse wont work with factors
+    #ifelse(as.character(x)!="", x, NA)
+    ifelse(x!="", x, NA)
+}
+
+
+data1<- data1.0 %>% 
+  mutate_each(funs(empty_as_na)) %>%
+  pivot_longer(cols = -c("Market", "Indicator", "Units", "Destination"),
+               names_to = "Year",
+               values_to = "number")  %>%
+  mutate(Year = substr(Year, 2, 1000)) %>%
+  pivot_wider(names_from = "Year",
+              values_from = "number")
+
+data2<- data2.0 %>% 
+  mutate_each(funs(empty_as_na)) %>%
+  pivot_longer(cols = -c("Market", "Indicator", "Units", "Destination"),
+               names_to = "Year",
+               values_to = "number")  %>%
+  mutate(Year = substr(Year, 2, 1000)) %>%
+  pivot_wider(names_from = "Year",
+              values_from = "number")
+
+data2.1<- data2.10 %>% 
+  mutate_each(funs(empty_as_na)) %>%
+  pivot_longer(cols = -c("Market", "Indicator", "Units", "Destination"),
+               names_to = "Year",
+               values_to = "number")  %>%
+  mutate(Year = substr(Year, 2, 1000)) %>%
+  pivot_wider(names_from = "Year",
+              values_from = "number")
+
+
+data3<- data3.0 %>% 
+  mutate_each(funs(empty_as_na)) %>%
+  pivot_longer(cols = -c("Market", "Indicator", "Units", "Destination"),
+               names_to = "Year",
+               values_to = "number")  %>%
+  mutate(Year = substr(Year, 2, 1000)) %>%
+  pivot_wider(names_from = "Year",
+              values_from = "number")
+
+
+data4<- data4.0 %>%
+  pivot_longer(cols = -c("Group", "Indicator", "Units"),
+               names_to = "Year",
+               values_to = "number")  %>%
+  mutate(Year = substr(Year, 2, 1000)) %>%
+  pivot_wider(names_from = "Year",
+              values_from = "number")
+
+d1<- tibble(data1[,-c(5:21)][,-c(3)][,c(1,2,3,8)])
+d2<- tibble(data2[,-c(5:21)]) 
+d2.1<- tibble(data2.1)[,-c(5:21)][,c(1,2,3,4,8)]
+d4<- tibble(data4.0[,-c(4:19)][,c(1, 2, 8)])
+```
+
+```{r fig.width = 4, fig.height = 4}
+empty_as_na <- function(x){
+    if("factor" %in% class(x)) x <- as.character(x) ## since ifelse wont work with factors
+    #ifelse(as.character(x)!="", x, NA)
+    ifelse(x!="", x, NA)
+}
+
+missing1 <- data1 %>%
+  rownames_to_column("id") %>%
+  gather(key, value, -id) %>% 
+  mutate(missing = ifelse(is.na(value), "yes", "no")) %>% 
+  group_by(key) %>% 
+  summarise(sum.na = sum(is.na(value)))
+
+#ggplot(missing1, aes(x = key, y = sum.na)) +
+#  geom_col(color = "blue", fill = "lightblue") +
+#  #scale_x_continuous(breaks = 1:28, labels = missing$key) +
+#  ggtitle("Number of missing values by day") +
+#  xlab("") +
+#  ylab("") +
+#  theme(axis.text.x = element_text(angle = 90))
+
+m1<- data1 %>%
+  pivot_longer(cols = -c("Market", "Indicator", "Units", "Destination"),
+               names_to = "Year",
+               values_to = "number") %>%
+  mutate(missing = ifelse(is.na(number), "yes", "no")) %>%
+  ggplot(aes(x = Indicator, y = Year, fill = missing)) +
+  geom_tile(color = "white") +
+  theme(axis.text.x = element_text(angle = 90)) +
+  labs(title = "Missing values in data1")
+```
+
+
+```{r fig.width = 4, fig.height = 4}
+missing2 <- data2 %>%
+  rownames_to_column("id") %>%
+  gather(key, value, -id) %>% 
+  mutate(missing = ifelse(is.na(value), "yes", "no")) %>% 
+  group_by(key) %>% 
+  summarise(sum.na = sum(is.na(value)))
+
+#ggplot(missing2, aes(x = key, y = sum.na)) +
+#  geom_col(color = "blue", fill = "lightblue") +
+#  #scale_x_continuous(breaks = 1:28, labels = missing$key) +
+#  ggtitle("Number of missing values by day") +
+#  xlab("") +
+#  ylab("") +
+#  theme(axis.text.x = element_text(angle = 90))
+
+m2<- data2 %>%
+  pivot_longer(cols = -c("Market", "Indicator", "Units", "Destination"),
+               names_to = "Year",
+               values_to = "number") %>%
+  mutate(missing = ifelse(is.na(number), "yes", "no")) %>%
+  ggplot(aes(x = Indicator, y = Year, fill = missing)) +
+  geom_tile(color = "white") +
+  labs(title = "Missing values in data2")
+  #theme(axis.text.x = element_text(angle = 10))
+```
+
+
+```{r fig.width = 4, fig.height = 4}
+missing2.1 <- data2.1 %>%
+  rownames_to_column("id") %>%
+  gather(key, value, -id) %>% 
+  mutate(missing = ifelse(is.na(value), "yes", "no")) %>% 
+  group_by(key) %>% 
+  summarise(sum.na = sum(is.na(value)))
+
+#ggplot(missing2.1, aes(x = key, y = sum.na)) +
+#  geom_col(color = "blue", fill = "lightblue") +
+#  #scale_x_continuous(breaks = 1:28, labels = missing$key) +
+#  ggtitle("Number of missing values by day") +
+#  xlab("") +
+#  ylab("") +
+#  theme(axis.text.x = element_text(angle = 90))
+
+m2.1<- data2.1 %>%
+  pivot_longer(cols = -c("Market", "Indicator", "Units", "Destination"),
+               names_to = "Year",
+               values_to = "number") %>%
+  mutate(missing = ifelse(is.na(number), "yes", "no")) %>%
+  ggplot(aes(x = Indicator, y = Year, fill = missing)) +
+  geom_tile(color = "white") +
+  labs(title = "Missing values in data2.1")#+
+  #theme(axis.text.x = element_text(angle = 10))
+```
+
+
+```{r fig.width = 4, fig.height = 4}
+missing3 <- data3 %>%
+  rownames_to_column("id") %>%
+  gather(key, value, -id) %>% 
+  mutate(missing = ifelse(is.na(value), "yes", "no")) %>% 
+  group_by(key) %>% 
+  summarise(sum.na = sum(is.na(value)))
+
+#ggplot(missing3, aes(x = key, y = sum.na)) +
+#  geom_col(color = "blue", fill = "lightblue") +
+#  #scale_x_continuous(breaks = 1:28, labels = missing$key) +
+#  ggtitle("Number of missing values by day") +
+#  xlab("") +
+#  ylab("") +
+#  theme(axis.text.x = element_text(angle = 90))
+
+m3<- data3 %>%
+  pivot_longer(cols = -c("Market", "Indicator", "Units", "Destination"),
+               names_to = "Year",
+               values_to = "number") %>%
+  mutate(missing = ifelse(is.na(number), "yes", "no")) %>%
+  ggplot(aes(x = Indicator, y = Year, fill = missing)) +
+  geom_tile(color = "white") +
+  theme(axis.text.x = element_text(angle = 10))+
+  labs(title = "Missing values in data3")
+```
+
+
+```{r fig.width = 9, fig.height = 9}
+#install.packages("ggpubr")
+library(ggpubr)
+ggarrange(m1, m2, m2.1, m3,  ncol = 2, nrow = 2)# + rremove("x.text"), 
+          #labels = c("1", "2", "2.1", "3"),
+          
+
+```
+
+From the plots we can see that data1 is only missing 8 values in Expenditure and PPPD (Per person per day spending) for 4 years. For data2, only average length of stay and visitor days in year 2021 is missing. For data2.1, the three indicators are all missing in 2021. For data3, all the data from 1990 to 1997 are missing for indicators except from visitor arrivals.
+
+The story is pretty different for data4. Intuitively speaking, data4 has a lot of missing data in different indicators and different years. Therefore, we applied 3 different plots to present the pattern of missing values in data4:
+
+```{r fig.width = 5, fig.height = 5}
+tidy4<- data4 %>%
+  rownames_to_column("id") %>%
+  gather(key, value, -id) %>% 
+  mutate(missing = ifelse(is.na(value), "yes", "no"))
+
+missing4 <- tidy4 %>% 
+    group_by(key) %>% 
+    summarise(sum.na = sum(is.na(value)))
+
+g4.1<- ggplot(missing4, aes(x = key, y = sum.na)) +
+  geom_col(color = "blue", fill = "lightblue") +
+  #scale_x_continuous(breaks = 1:28, labels = missing$key) +
+  labs(title = "Missing values in data4, for different years",
+       x = "Year",
+       y = "number of missing values") +
+  xlab("") +
+  ylab("") +
+  theme(axis.text.x = element_text(angle = 90))
+
+```
+```{r fig.width = 5, fig.height = 5}
+#group missing
+g4.3<- data4 %>%
+  pivot_longer(cols = -c("Group", "Indicator", "Units"),
+               names_to = "Year",
+               values_to = "number") %>%
+  mutate(missing = ifelse(is.na(number), "yes", "no")) %>%
+  ggplot(aes(x = Group, y = Year, fill = missing)) +
+  geom_tile(color = "white") +
+  labs(title = "Missing values in data4, for different destinations",
+       x = "destination") +
+  theme(axis.text.x = element_text(angle = 90))
+```
+
+```{r fig.width = 10, fig.height = 5}
+#install.packages("ggpubr")
+library(ggpubr)
+ggarrange(g4.1, g4.3, ncol = 2) # + rremove("x.text"), 
+          #labels = c("1", "2", "2.1", "3"),
+           #, nrow = 2)
+
+```
+
+From the histogram plot and the heatmap we can see that data for all destinations in 1999 to 2017 are greatly missing. And in the heatmap for missing data in different years and indicators shown below, we can see that the for year 2016 to 2020, no data is missing.
+
+```{r fig.width = 7, fig.height = 7}
+#indicator missing
+data4 %>%
+  pivot_longer(cols = -c("Group", "Indicator", "Units"),
+               names_to = "Year",
+               values_to = "number") %>%
+  mutate(missing = ifelse(is.na(number), "yes", "no")) %>%
+  ggplot(aes(x = Indicator, y = Year, fill = missing)) +
+  geom_tile(color = "white") +
+  ggtitle("Missing values in data4, for different years and indicators") +
+  theme(axis.text.x = element_text(angle = 90))
+```
+
+In conclusion, the only years with no missing value at all should be 2018 and 2019. As the data in 2018 is too old, we chose to use the data in 2019 as our observation when analysing the first 2 problems. In problem 3 where we analyse the impact of pandemic on the tourism in Hawaii, we would use data in year 2018 to 2021.
+
+
+
+
+#```{r setup, include=FALSE, message = FALSE, warning = FALSE}
+#knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+#```
+
+# Missing values
+
+In this chapter, we discuss the pattern of missing values in our datasets. After carefully observing our data, we found out that data1, data2, data2.1, data3 do not have a lot of missing data. Even though they do, the missing pattern is pretty neat. Take data3 as an example, all the data from 1990 to 1997 are missing for indicators except from visitor arrivals. Therefore, we applied a heatmap for each of these datasets to show the missing patterns of the four datasets:
+
+```{r}
+# from chapter 2&3
+data1.0 <- read.csv("1 visitor trend-不分state.csv")[-c(7:11),]
+data2.0 <- read.csv("2 visitor trend-分state.csv")[-c(301:305),]
+data2.10<- read.csv("2.1 visitor trend- state plus dest.csv")[-c(1051:1054),]
+data3.0 <- read.csv("3 destination.csv")[-c(29:32),]
+data4.0 <- read.csv("4 Q2主要数据.csv")[-c(217:221),]
+
+library(tidyverse)
+library(dplyr)
+
+empty_as_na <- function(x){
+    if("factor" %in% class(x)) x <- as.character(x) ## since ifelse wont work with factors
+    #ifelse(as.character(x)!="", x, NA)
+    ifelse(x!="", x, NA)
+}
+
+
+data1<- data1.0 %>% 
+  mutate_each(funs(empty_as_na)) %>%
+  pivot_longer(cols = -c("Market", "Indicator", "Units", "Destination"),
+               names_to = "Year",
+               values_to = "number")  %>%
+  mutate(Year = substr(Year, 2, 1000)) %>%
+  pivot_wider(names_from = "Year",
+              values_from = "number")
+
+data2<- data2.0 %>% 
+  mutate_each(funs(empty_as_na)) %>%
+  pivot_longer(cols = -c("Market", "Indicator", "Units", "Destination"),
+               names_to = "Year",
+               values_to = "number")  %>%
+  mutate(Year = substr(Year, 2, 1000)) %>%
+  pivot_wider(names_from = "Year",
+              values_from = "number")
+
+data2.1<- data2.10 %>% 
+  mutate_each(funs(empty_as_na)) %>%
+  pivot_longer(cols = -c("Market", "Indicator", "Units", "Destination"),
+               names_to = "Year",
+               values_to = "number")  %>%
+  mutate(Year = substr(Year, 2, 1000)) %>%
+  pivot_wider(names_from = "Year",
+              values_from = "number")
+
+
+data3<- data3.0 %>% 
+  mutate_each(funs(empty_as_na)) %>%
+  pivot_longer(cols = -c("Market", "Indicator", "Units", "Destination"),
+               names_to = "Year",
+               values_to = "number")  %>%
+  mutate(Year = substr(Year, 2, 1000)) %>%
+  pivot_wider(names_from = "Year",
+              values_from = "number")
+
+
+data4<- data4.0 %>%
+  pivot_longer(cols = -c("Group", "Indicator", "Units"),
+               names_to = "Year",
+               values_to = "number")  %>%
+  mutate(Year = substr(Year, 2, 1000)) %>%
+  pivot_wider(names_from = "Year",
+              values_from = "number")
+
+d1<- tibble(data1[,-c(5:21)][,-c(3)][,c(1,2,3,8)])
+d2<- tibble(data2[,-c(5:21)]) 
+d2.1<- tibble(data2.1)[,-c(5:21)][,c(1,2,3,4,8)]
+d4<- tibble(data4.0[,-c(4:19)][,c(1, 2, 8)])
+```
+
+```{r fig.width = 4, fig.height = 4}
+empty_as_na <- function(x){
+    if("factor" %in% class(x)) x <- as.character(x) ## since ifelse wont work with factors
+    #ifelse(as.character(x)!="", x, NA)
+    ifelse(x!="", x, NA)
+}
+
+missing1 <- data1 %>%
+  rownames_to_column("id") %>%
+  gather(key, value, -id) %>% 
+  mutate(missing = ifelse(is.na(value), "yes", "no")) %>% 
+  group_by(key) %>% 
+  summarise(sum.na = sum(is.na(value)))
+
+#ggplot(missing1, aes(x = key, y = sum.na)) +
+#  geom_col(color = "blue", fill = "lightblue") +
+#  #scale_x_continuous(breaks = 1:28, labels = missing$key) +
+#  ggtitle("Number of missing values by day") +
+#  xlab("") +
+#  ylab("") +
+#  theme(axis.text.x = element_text(angle = 90))
+
+m1<- data1 %>%
+  pivot_longer(cols = -c("Market", "Indicator", "Units", "Destination"),
+               names_to = "Year",
+               values_to = "number") %>%
+  mutate(missing = ifelse(is.na(number), "yes", "no")) %>%
+  ggplot(aes(x = Indicator, y = Year, fill = missing)) +
+  geom_tile(color = "white") +
+  theme(axis.text.x = element_text(angle = 90)) +
+  labs(title = "Missing values in data1")
+```
+
+
+```{r fig.width = 4, fig.height = 4}
+missing2 <- data2 %>%
+  rownames_to_column("id") %>%
+  gather(key, value, -id) %>% 
+  mutate(missing = ifelse(is.na(value), "yes", "no")) %>% 
+  group_by(key) %>% 
+  summarise(sum.na = sum(is.na(value)))
+
+#ggplot(missing2, aes(x = key, y = sum.na)) +
+#  geom_col(color = "blue", fill = "lightblue") +
+#  #scale_x_continuous(breaks = 1:28, labels = missing$key) +
+#  ggtitle("Number of missing values by day") +
+#  xlab("") +
+#  ylab("") +
+#  theme(axis.text.x = element_text(angle = 90))
+
+m2<- data2 %>%
+  pivot_longer(cols = -c("Market", "Indicator", "Units", "Destination"),
+               names_to = "Year",
+               values_to = "number") %>%
+  mutate(missing = ifelse(is.na(number), "yes", "no")) %>%
+  ggplot(aes(x = Indicator, y = Year, fill = missing)) +
+  geom_tile(color = "white") +
+  labs(title = "Missing values in data2")
+  #theme(axis.text.x = element_text(angle = 10))
+```
+
+
+```{r fig.width = 4, fig.height = 4}
+missing2.1 <- data2.1 %>%
+  rownames_to_column("id") %>%
+  gather(key, value, -id) %>% 
+  mutate(missing = ifelse(is.na(value), "yes", "no")) %>% 
+  group_by(key) %>% 
+  summarise(sum.na = sum(is.na(value)))
+
+#ggplot(missing2.1, aes(x = key, y = sum.na)) +
+#  geom_col(color = "blue", fill = "lightblue") +
+#  #scale_x_continuous(breaks = 1:28, labels = missing$key) +
+#  ggtitle("Number of missing values by day") +
+#  xlab("") +
+#  ylab("") +
+#  theme(axis.text.x = element_text(angle = 90))
+
+m2.1<- data2.1 %>%
+  pivot_longer(cols = -c("Market", "Indicator", "Units", "Destination"),
+               names_to = "Year",
+               values_to = "number") %>%
+  mutate(missing = ifelse(is.na(number), "yes", "no")) %>%
+  ggplot(aes(x = Indicator, y = Year, fill = missing)) +
+  geom_tile(color = "white") +
+  labs(title = "Missing values in data2.1")#+
+  #theme(axis.text.x = element_text(angle = 10))
+```
+
+
+```{r fig.width = 4, fig.height = 4}
+missing3 <- data3 %>%
+  rownames_to_column("id") %>%
+  gather(key, value, -id) %>% 
+  mutate(missing = ifelse(is.na(value), "yes", "no")) %>% 
+  group_by(key) %>% 
+  summarise(sum.na = sum(is.na(value)))
+
+#ggplot(missing3, aes(x = key, y = sum.na)) +
+#  geom_col(color = "blue", fill = "lightblue") +
+#  #scale_x_continuous(breaks = 1:28, labels = missing$key) +
+#  ggtitle("Number of missing values by day") +
+#  xlab("") +
+#  ylab("") +
+#  theme(axis.text.x = element_text(angle = 90))
+
+m3<- data3 %>%
+  pivot_longer(cols = -c("Market", "Indicator", "Units", "Destination"),
+               names_to = "Year",
+               values_to = "number") %>%
+  mutate(missing = ifelse(is.na(number), "yes", "no")) %>%
+  ggplot(aes(x = Indicator, y = Year, fill = missing)) +
+  geom_tile(color = "white") +
+  theme(axis.text.x = element_text(angle = 10))+
+  labs(title = "Missing values in data3")
+```
+
+
+```{r fig.width = 9, fig.height = 9}
+#install.packages("ggpubr")
+library(ggpubr)
+ggarrange(m1, m2, m2.1, m3,  ncol = 2, nrow = 2)# + rremove("x.text"), 
+          #labels = c("1", "2", "2.1", "3"),
+          
+
+```
+
+From the plots we can see that data1 is only missing 8 values in Expenditure and PPPD (Per person per day spending) for 4 years. For data2, only average length of stay and visitor days in year 2021 is missing. For data2.1, the three indicators are all missing in 2021. For data3, all the data from 1990 to 1997 are missing for indicators except from visitor arrivals.
+
+The story is pretty different for data4. Intuitively speaking, data4 has a lot of missing data in different indicators and different years. Therefore, we applied 3 different plots to present the pattern of missing values in data4:
+
+```{r fig.width = 5, fig.height = 5}
+tidy4<- data4 %>%
+  rownames_to_column("id") %>%
+  gather(key, value, -id) %>% 
+  mutate(missing = ifelse(is.na(value), "yes", "no"))
+
+missing4 <- tidy4 %>% 
+    group_by(key) %>% 
+    summarise(sum.na = sum(is.na(value)))
+
+g4.1<- ggplot(missing4, aes(x = key, y = sum.na)) +
+  geom_col(color = "blue", fill = "lightblue") +
+  #scale_x_continuous(breaks = 1:28, labels = missing$key) +
+  labs(title = "Missing values in data4, for different years",
+       x = "Year",
+       y = "number of missing values") +
+  xlab("") +
+  ylab("") +
+  theme(axis.text.x = element_text(angle = 90))
+
+```
+```{r fig.width = 5, fig.height = 5}
+#group missing
+g4.3<- data4 %>%
+  pivot_longer(cols = -c("Group", "Indicator", "Units"),
+               names_to = "Year",
+               values_to = "number") %>%
+  mutate(missing = ifelse(is.na(number), "yes", "no")) %>%
+  ggplot(aes(x = Group, y = Year, fill = missing)) +
+  geom_tile(color = "white") +
+  labs(title = "Missing values in data4, for different destinations",
+       x = "destination") +
+  theme(axis.text.x = element_text(angle = 90))
+```
+
+```{r fig.width = 10, fig.height = 5}
+#install.packages("ggpubr")
+library(ggpubr)
+ggarrange(g4.1, g4.3, ncol = 2) # + rremove("x.text"), 
+          #labels = c("1", "2", "2.1", "3"),
+           #, nrow = 2)
+
+```
+
+From the histogram plot and the heatmap we can see that data for all destinations in 1999 to 2017 are greatly missing. And in the heatmap for missing data in different years and indicators shown below, we can see that the for year 2016 to 2020, no data is missing.
+
+```{r fig.width = 7, fig.height = 7}
+#indicator missing
+data4 %>%
+  pivot_longer(cols = -c("Group", "Indicator", "Units"),
+               names_to = "Year",
+               values_to = "number") %>%
+  mutate(missing = ifelse(is.na(number), "yes", "no")) %>%
+  ggplot(aes(x = Indicator, y = Year, fill = missing)) +
+  geom_tile(color = "white") +
+  ggtitle("Missing values in data4, for different years and indicators") +
+  theme(axis.text.x = element_text(angle = 90))
+```
+
+In conclusion, the only years with no missing value at all should be 2018 and 2019. As the data in 2018 is too old, we chose to use the data in 2019 as our observation when analysing the first 2 problems. In problem 3 where we analyse the impact of pandemic on the tourism in Hawaii, we would use data in year 2018 to 2021.
+
+
+
+```{r setup, include=FALSE, message = FALSE, warning = FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+```
+
+# Results
+
+From our analysis, we found out that most people come to Hawaii for vacation, and most of them would choose to come again. Additionally, we found people in the north and west US has a higher rate choosing Hawaii travel. As for the Accommodation choice, people tend to rest in hotels and condos. For the destination, Oahu island and Maui island are the most popular ones, while people would spend similar time spending in Oahu, Maui, Kona and Kauai island. Lanai island seems to be the least popular island among all. We have also found that visitors from Illinois, Idaho, Georgia, Florida and some other southern states could have a clustering pattern when it comes to their destinations. Considering the time, we found the huge impact of the financial crisis of 2008 and the pandemic to the visitor number and expenditure in Hawaii. There is a seasonality that July and March is the high season while January and September is the low season for Hawaii tourism.
+
+The graphs and comments are shown below. 
+
+
+```{r}
+# from chapter 2&3
+data1.0 <- read.csv("1 visitor trend-不分state.csv")[-c(7:11),]
+data2.0 <- read.csv("2 visitor trend-分state.csv")[-c(301:305),]
+data2.10<- read.csv("2.1 visitor trend- state plus dest.csv")[-c(1051:1054),]
+data3.0 <- read.csv("3 destination.csv")[-c(29:32),]
+data4.0 <- read.csv("4 Q2主要数据.csv")[-c(217:221),]
+
+library(tidyverse)
+library(dplyr)
+
+empty_as_na <- function(x){
+    if("factor" %in% class(x)) x <- as.character(x) ## since ifelse wont work with factors
+    #ifelse(as.character(x)!="", x, NA)
+    ifelse(x!="", x, NA)
+}
+
+
+data1<- data1.0 %>% 
+  mutate_each(funs(empty_as_na)) %>%
+  pivot_longer(cols = -c("Market", "Indicator", "Units", "Destination"),
+               names_to = "Year",
+               values_to = "number")  %>%
+  mutate(Year = substr(Year, 2, 1000)) %>%
+  pivot_wider(names_from = "Year",
+              values_from = "number")
+
+data2<- data2.0 %>% 
+  mutate_each(funs(empty_as_na)) %>%
+  pivot_longer(cols = -c("Market", "Indicator", "Units", "Destination"),
+               names_to = "Year",
+               values_to = "number")  %>%
+  mutate(Year = substr(Year, 2, 1000)) %>%
+  pivot_wider(names_from = "Year",
+              values_from = "number")
+
+data2.1<- data2.10 %>% 
+  mutate_each(funs(empty_as_na)) %>%
+  pivot_longer(cols = -c("Market", "Indicator", "Units", "Destination"),
+               names_to = "Year",
+               values_to = "number")  %>%
+  mutate(Year = substr(Year, 2, 1000)) %>%
+  pivot_wider(names_from = "Year",
+              values_from = "number")
+
+
+data3<- data3.0 %>% 
+  mutate_each(funs(empty_as_na)) %>%
+  pivot_longer(cols = -c("Market", "Indicator", "Units", "Destination"),
+               names_to = "Year",
+               values_to = "number")  %>%
+  mutate(Year = substr(Year, 2, 1000)) %>%
+  pivot_wider(names_from = "Year",
+              values_from = "number")
+
+
+data4<- data4.0 %>%
+  pivot_longer(cols = -c("Group", "Indicator", "Units"),
+               names_to = "Year",
+               values_to = "number")  %>%
+  mutate(Year = substr(Year, 2, 1000)) %>%
+  pivot_wider(names_from = "Year",
+              values_from = "number")
+
+d1<- tibble(data1[,-c(5:21)][,-c(3)][,c(1,2,3,8)])
+d2<- tibble(data2[,-c(5:21)]) 
+d2.1<- tibble(data2.1)[,-c(5:21)][,c(1,2,3,4,8)]
+d4<- tibble(data4.0[,-c(4:19)][,c(1, 2, 8)])
+```
+
+
+
+
+**1. What kind of people would come to Hawaii?**
+
+We analyse this question by exploring the average age of people who come to Hawaii, the percentage of people who come more than one time, and the Hawaii travel rate of the states.
+
+```{r fig.width = 10, fig.height = 5}
+d4.1<- d4 %>%
+  filter(Group != "Visitor from US") %>%
+  na.omit() %>%
+  pivot_wider(names_from = Indicator, values_from = X2019) 
+  
+d4.1 %>%
+  mutate(Group = factor(Group, levels = c("Oahu visitors", 
+                                          "Maui visitors",
+                                          "Hawaii ISL visitors",
+                                          "Kauai visitors",
+                                          "Lanai visitors",
+                                          "Molokai visitors"))) %>%
+  ggplot(aes(x = Group, y = `Avg. age of party head`)) +
+  geom_col(fill = "cornflowerblue") +
+  coord_flip() +
+  labs(title = "Age distribution of people to different islands",
+       x = "Average age",
+       y = "Destination")
+
+
+d4.1[,c(1,3,4)] %>%
+  pivot_longer(c(`First timer (%)`, `Repeaters (%)`), 
+               names_to ="Times of come", 
+               values_to = "percentage") %>%
+  ggplot(aes(x = Group, y = percentage, fill = `Times of come`)) +
+  geom_col()  +
+  labs(title = "Will people travel to Hawaii again? If they do, which island is more popular?",
+       x = "Destination",
+       y = "Percentage")
+```
+
+From the horizontal barchart we can see that the average age of people that come to Hawaii is 40 to 50 years old. Among all destinations, people who go to Molokai and Lanai are generally older, and people who go to Oahu and Maui island tend to be younger. Also, from the stacked barchart that shows how many visitors come to Hawaii for the first time and how many people have come several times, we can see that more than 60% of people are repeaters, which means that Hawaii is an attractive destination for people who are middle age, and they would always like to come again. Among all the islands in Hawaii, Maui and Kauai islands have the most repeaters, while Lanai island has the lest repeaters.
+
+
+```{r}
+rawdata2 = read.csv("data/raw/2 visitor trend-bystate.csv")
+```
+
+```{r}
+#tmap data preprocess
+visitors_by_state = rawdata2 %>% filter(Indicator == "Visitor arrivals", Destination == "Statewide")
+names(visitors_by_state)[names(visitors_by_state) == 'Market'] = "NAME"
+
+library(tigris)
+# The US map used here is in package tigris. Year = 2019. 
+state = states( year = 2019) %>%shift_geometry(position = "outside")
+
+visitors_by_state$NAME[!visitors_by_state$NAME %in% state$NAME]
+state$NAME[!state$NAME%in% visitors_by_state$NAME]
+
+#Correct different naming in the key for the join process
+visitors_by_state[,"NAME"][visitors_by_state[,"NAME"] == "N. Carolina"] <- "North Carolina"
+visitors_by_state[,"NAME"][visitors_by_state[,"NAME"] == "N. Dakota"] <- "North Dakota"
+visitors_by_state[,"NAME"][visitors_by_state[,"NAME"] == "S. Carolina"] <- "South Carolina"
+visitors_by_state[,"NAME"][visitors_by_state[,"NAME"] == "Washington, D.C."] <- "District of Columbia"
+visitors_by_state[,"NAME"][visitors_by_state[,"NAME"] == "S. Dakota"] <- "South Dakota"
+visitors_by_state[,"NAME"][visitors_by_state[,"NAME"] == "W. Virginia"] <- "West Virginia"
+
+```
+
+
+```{r}
+# 2019 census-us-population-data-by-state
+#https://www.kaggle.com/datasets/peretzcohen/2019-census-us-population-data-by-state?resource=download
+
+state_population_raw = read.csv("data/raw/2019_Census_US_Population_Data_By_State_Lat_Long.csv")
+```
+
+```{r}
+state_population = state_population_raw[,1:2]
+names(state_population)[names(state_population) == 'STATE'] = "NAME"
+```
+
+```{r}
+state2 =state %>% filter(NAME %in% visitors_by_state$NAME)
+visitors_by_state2 = left_join(state2,visitors_by_state)
+visitors_by_state2$X2019 = as.numeric(gsub(",","",visitors_by_state2$X2019))
+
+
+visitors_by_state3 = left_join(visitors_by_state2, state_population) %>%
+  mutate(hawaii_travel_rate = X2019/POPESTIMATE2019)
+```
+
+```{r}
+library(sf)
+library(tmap)
+state2 =state %>% filter(NAME %in% visitors_by_state$NAME)
+visitors_by_state2 = left_join(state2,visitors_by_state)
+visitors_by_state2$X2019 = as.numeric(gsub(",","",visitors_by_state2$X2019))
+
+mainstate <-st_bbox(state %>% filter(NAME %in% visitors_by_state$NAME))
+```
+
+```{r}
+tm_shape(visitors_by_state3, bbox = mainstate) +
+  tm_polygons("hawaii_travel_rate", palette = "Reds",breaks = seq(0,.14,.01)) +
+   tm_text("STUSPS", size = .5,remove.overlap =  T)+
+    tm_layout(main.title = "2019 Hawaii Travel Rate of States",  main.title.position = c("center","top"))
+```
+
+The map clearly shows the number of Hawaii visitors coming from different states over the states' census population in 2019. By looking at the darkness of the red color, we can find Alaska had the highest Hawaii travel rate in 2019, which is far higher than that of the other states. And there is a rough rule: north and west states tend to have higher Hawaii travel rate. This follows our common sense that people living closer to the destination or living under a colder temperature may have a higher willing to take a holiday in Hawaii. 
+
+**2. Why do people come here**
+
+Secondly, we are curious about the reason why people come to Hawaii:
+```{r}
+purpose<- cbind(d4.1[,c(1)], d4.1[c(grep("Purpose",colnames(d4.1)))])%>%
+  pivot_longer(c(2:16), 
+               names_to ="Purpose", 
+               values_to = "percentage") %>%
+  mutate(Purpose = substr(Purpose, 10, 1000)) %>%
+  mutate(Purpose = gsub('.{4}$', '', Purpose)) %>%
+  filter(Purpose %in% c("Vacation", "Honeymoon/Get married", "Visit Friends/Relative")) %>%
+  pivot_wider(names_from = Purpose, 
+              values_from = percentage) %>%
+  mutate(OtherPurpose = 100 - Vacation - `Honeymoon/Get married` - `Visit Friends/Relative`) %>%
+  pivot_longer(c(2:5),
+               names_to = "Purpose",
+               values_to = "percentage")
+
+purpose %>%
+  ggplot(aes(x = Group, y = percentage, fill = Purpose)) +
+  geom_col()  +
+  theme(axis.text.x = element_text(angle = 10, vjust = 0.5, hjust=1)) +
+  labs(title = "Purpose of people going to different islands",
+       x = "Destination",
+       y = "Percentage")
+```
+
+
+There are 4 major reasons for people to go to Hawaii islands: for vacation, to visit friends or relatives, for honeymoon or get married and for other purposes. From the plot we can see that most people go to Hawaii for vacation. The second major reason is that people go there to visit friends and relatives. Among the 6 islands, Molokai island has the most visitors who go there to visit friends and relatives, while Maui island has the least. The number of people that go to Oahu for honeymoon or get married is the most comparing to other islands.
+
+
+**3. Where do people live during their visit?**
+
+Accommodation is also pretty important when we plan a trip. Should we rent a cabin, or should we live in a hotel? The accommodations that most people choose could be a safer choice for us.
+
+```{r}
+Accom<- cbind(d4.1[,c(1)], d4.1[c(grep("Accom",colnames(d4.1)))]) %>%
+  pivot_longer(c(2:14), 
+               names_to ="Accommodation", 
+               values_to = "percentage") %>%
+  mutate(Accommodation = substr(Accommodation, 8, 1000)) %>%
+  mutate(Accommodation = gsub('.{4}$', '', Accommodation)) %>%
+  filter(Accommodation %in% c("Hotel only", "Condo", "Friends/Relatives", "Rental house")) %>%
+  pivot_wider(names_from = Accommodation, 
+              values_from = percentage) %>%
+  mutate(OtherAccommodation = 100 - `Hotel only` - `Condo` - `Friends/Relatives` - `Rental house`) %>%
+  pivot_longer(c(2:6),
+               names_to = "Accommodation",
+               values_to = "percentage")
+
+Accom %>%
+  ggplot(aes(x = Group, y = percentage, fill = Accommodation)) +
+  geom_col() +
+    theme(axis.text.x = element_text(angle = 10, vjust = 0.5, hjust=1))+
+  labs(title = "Accommodation of people going to different islands",
+       x = "Destination",
+       y = "Percentage")
+```
+
+From the stacked barchart we can see that the most popular accommodation is hotel and condos are pretty welcome too. Accommodation choices vary from island to island. For Oahu island, the percentage of people who live in hotel outperforms all the other islands, and for Maui island the number of people living in Condos outperforms other islands. 
+
+
+**4. Which island is more popular?**
+
+Now we would like to decide which island we would like to go if our travel time is limit by plotting the number of visitors and the length of them to stay in different islands.
+
+```{r}
+library(treemap)
+
+d3<- tibble(data3[,-c(5:29)][,c(1,2,3,4,9)])
+colnames(d3)[5] <- 'Year_2019'
+d3$Year_2019<- as.numeric(gsub(",","", d3$Year_2019))
+
+ d3 %>%
+  filter(Indicator == "Visitor arrivals") %>%
+  select( -c(Market, Units)) %>%
+  treemap::treemap(index=c("Destination"),
+                   vSize="Year_2019",
+                   vColor="Year_2019",
+                   type="value",
+                   title="Number of visitors to different islands",  
+                   format.legend = list(scientific = FALSE, big.mark = " ")) 
+  
+ d3 %>%
+  filter(Indicator == "Length of stay") %>%
+  select( -c(Market, Units)) %>%
+  treemap::treemap(index=c("Destination"),
+                   vSize="Year_2019",
+                   vColor="Year_2019",
+                   type="value",
+                   title="Length of stay for visitors to different islands",  
+                   format.legend = list(scientific = FALSE, big.mark = " ")) 
+```
+
+
+From the two tree maps we can see that most people would visit to Oahu island, then Maui island. Kauai and Kona island are the next popular islands, and Hilo is not as popular as the others. Lanai island is the least popular one. But in terms of length of stay, people who visit Maui iland would stay for the longest time which is approximately 8 days, then Oahu, Kauai and Kona islands have similar length of stay of approximately 6 to 7.5 days. People would stay in Molokai, Hilo and Lanai islands for much less time, which is less than 5 days.
+
+
+
+**5. Do people from different states have a preference of different destinations?**
+
+Apart from the features above, we are also curious about whether people from different states have a preference in going to different islands. We applied a static parallel coordinates plot to analyse this problem.
+
+```{r fig.width = 10, fig.height = 5}
+
+library(parcoords)  
+library(d3r)
+
+colnames(d2.1)[5] <- 'Year_2019'
+
+g<- d2.1 %>%
+  filter(Indicator == "Visitor arrivals") %>%
+  dplyr::select(Destination, Market, Year_2019) %>%
+  pivot_wider(names_from = Destination,
+              values_from = Year_2019) 
+g1 <- data.frame(t(data.frame(matrix(unlist(g), nrow=length(g), byrow=TRUE))))
+colnames(g1)<- names(g)
+
+library(GGally)
+ggparcoord(g1, columns = 2:8, scale = "center", alphaLines = .7, splineFactor = 10, groupColumn = 1) +
+ # geom_vline(xintercept = 2:7, color = "lightblue") +
+  theme(legend.title = element_text(size = 5), legend.text = element_text(size = 5)) +
+  labs(title = "Parallel coordinate plot of people from different states going to different destinations",
+       x = "Destination")
+
+```
+
+
+From the plot we can see that there is no outlier in this dataset. However there are some obvious clusters shown in the plot. For example, Maine, New York, New Jersey, Utha and Vergina is clearly a cluster.To gain a better vision of the parallal coordinate plot, we applied an interactive parallel coordinates plot for the same data:
+
+```{r}
+interactive<- g1 %>%
+  parcoords(  
+    rownames = F     #   turn off rownames from the data.frame  
+    , brushMode = "1D-axes"  
+    , reorderable = T  
+    , queue = T  
+    , withD3 = TRUE     
+  )
+interactive
+```
+
+From this interactive plot, the clustering pattern is much easier to observe. For example, Now we can see that Texas, Oklahoma, Kansas, Lowa and Connecicut are clearly a cluster as people from these states would all like to go to Kauai and Kona island instead of Oahu and Maui island.
+
+**How does the total expenditure and visitor number of the US change by years in Hawaii?**
+
+The goal of this part is to plot the expenditure and visitor number over time and find some long-term trends or patterns.
+
+```{r}
+exp_data = pivot_longer(data1[3,],cols = 5:ncol(data1)) 
+visit_data = pivot_longer(data1[1,],cols = 5:ncol(data1)) 
+colnames(visit_data)[6] = "visit"
+
+time_data = cbind(visit_data,exp_data$value)
+colnames(time_data)[7] = "value"
+```
+
+```{r}
+library(lubridate)
+time_data$name = ymd(paste(as.character(time_data$name),"01","01",sep = ","))
+time_data$value =  as.numeric(gsub(",","",time_data$value))
+time_data$visit =  as.numeric(gsub(",","",time_data$visit))/1000
+```
+
+```{r}
+g = ggplot(time_data, aes(name, visit)) +
+  geom_point()+
+  geom_point(aes(name, value))+
+  geom_smooth(formula = y ~ x,method = "loess", span = .2, se = FALSE) + 
+  geom_smooth(aes(name, value),formula = y ~ x,method = "loess", span = .4, se = FALSE, color = "red") + 
+  ggtitle("US Total Visitor Number and Expenditure in Hawaii by Years") +
+  scale_x_date(date_breaks = "5 years", date_labels = "%Y") +
+  xlab("year")+
+  ylab("Visitor in thousand / Expenditure in $ mil")+
+  annotate("rect",xmin = ymd("2007-01-01"), xmax = ymd("2009-01-01"), ymin = -Inf, ymax = Inf, fill = "green", color = "green", alpha = .2) + 
+  annotate("text",x = ymd("2009-02-01"), y = 11000, label = "2007-2009", hjust = 0, color = "green") +
+  annotate("text",x = ymd("2018-12-01"), y = 11000, label = "Missing data \n on 2020", hjust = 0, color = "red")
+
+g
+```
+
+We can find the US total expenditure in Hawaii mainly follows a increasing trend. Possible reasons can be the thrive of the tourism in Hawaii and inflation. There is a notable decrease in the US total expenditure from 2007 to 2009. Similar to our homework question, the financial crisis of 2008 may be able to explain this decrease. And the expenditure data of 2020 is missing for some reason, which makes us unable to check the influence of the pandemic to the US total expenditure. But at least we can see the expenditure of 2021 still followed the increase trend.
+Similarly, the US total visitors in Hawaii also follows a increasing trend with the same decrease from 2007 to 2009. This time we have the 2020 data. And we can find there did exist a huge decrease in the number of visitors to Hawaii on 2020. The pandemic had a great influence to the visitor number.
+
+**How does the total number of visitors change in seasons?**
+After looking at the long-term trend in the previous section, we want to see some seasonality here. We will plot and compare the total number of visitors versus months.
+
+```{r}
+visit_month = read.csv("data/raw/month_visitor.csv")
+visit_month = pivot_longer(visit_month[1,],cols = 5:ncol(visit_month)) 
+```
+
+```{r}
+visit_month = visit_month %>% mutate("year" = substr(visit_month$name, 2, 5),
+                                     "month" = substr(visit_month$name, 7,9) )
+visit_month$value =  as.numeric(gsub(",","",visit_month$value))
+visit_month$year = as.numeric(visit_month$year)
+visit_month$month = as.numeric(visit_month$month)
+visit_month = visit_month %>% filter(year %in% c(2000,2005,2010,2015,2020))
+
+```
+
+```{r}
+g4 = ggplot(visit_month, aes(as.integer(month), value)) +
+  geom_point() +
+  geom_line() +
+  scale_x_continuous("month", breaks = seq(1,12,1))+
+  ylab("Number of visitors in month")+
+  ggtitle("Seasonality of Visitor Number in Hawaii")+
+  facet_grid(year~., scales = "free_y")
+
+g4
+```
+
+We can find that in the years without the pandemic, July is the peak of the visitor number, and March is another smaller peak. And the smallest visitor number occurs on September or January. We can find July and March represent summer holiday and spring holiday respectively. September and January represent the end of summer holiday and winter holiday respectively. It is very interesting to find the off seasons occur right after the holidays. 2020 is the special year with the pandemic. We know Covid started in the US at around March 2020. And we can find the visitor number rapidly decreased to around 0 and lasted for more than 5 months. We can find the impact of the pandemic clearly.
+
+
